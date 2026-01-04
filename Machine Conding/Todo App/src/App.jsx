@@ -3,13 +3,13 @@ import './index.css'
 import './App.css'
 
 function App() {
+  const [id, setId] = useState(1);
   const [content, setContent] = useState("");
   const [filter, setFilter] = useState("all");
   const [tasks, setTasks] = useState(() => {
     const saved = localStorage.getItem('todos');
     return saved ? JSON.parse(saved) : [];
   });
-  const [id, setId] = useState(1);
 
   useEffect(() => {
     localStorage.setItem('todos', JSON.stringify(tasks));
@@ -79,7 +79,7 @@ function App() {
                 <div key={task.id} className={`flex flex-col bg-zinc-500 p-2 rounded justify-between gap-2 w-52 h-48 overflow-hidden ${task.completed ? "border-green-500" : "border-amber-500"} border-2`}>
                   <div className='gap-2 overflow-hidden'>
                     <h3 className='text-sm break-words line-clamp-3'>{task.content}</h3>
-                    <p className={`text-8 ${task.completed ? "text-green-200" : "text-blue-200"}`}>{task.completed ? "Remaining" : "Completed"}</p>
+                    <p className={`text-8 ${task.completed ? "text-green-200" : "text-blue-200"}`}>{task.completed ? "Completed" : "Remaining"}</p>
                   </div>
                   <div className='flex justify-between gap-2'>
                     <button onClick={() => handleDeleteTask(task)} className='border rounded p-2 bg-red-500 text-white text-4'>Delete</button>
