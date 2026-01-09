@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GST Verifier</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>GST Verifier</h1>
+            <p>Verify any GSTIN instantly</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="gstin-input" placeholder="Enter GSTIN (e.g., 27AAPFU0939F1ZV)">
+            <button id="verify-btn">Verify</button>
+        </div>
+
+        <div id="result-card" class="result-card hidden">
+            <!-- Result Card -->
+        </div>
+
+        <div id="error-msg" class="error-msg hidden"></div>
+
+        <div class="history-section">
+            <h2>Search History</h2>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
