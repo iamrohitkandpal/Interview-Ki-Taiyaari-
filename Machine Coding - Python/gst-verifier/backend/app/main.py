@@ -2,6 +2,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Importing router and database
+from .routes.gst import router as gst_router
+from .database import engine
+from . import models
+
+# Creating Database Tables
+models.Base.metadata.create_all(bind=engine)
+
 # Creating FastAPI Instance
 app = FastAPI(title="GST Verifier", description="API for GST Verification", version="1.0.0")
 
@@ -9,7 +17,7 @@ app = FastAPI(title="GST Verifier", description="API for GST Verification", vers
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['*'], allow_methods=['*'])
 
 # Including Router
-# app.include_router()
+app.include_router(gst_router)
 
 # Root Route
 @app.get("/", tags=["Root"])
