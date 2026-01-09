@@ -1,15 +1,21 @@
+# Importing Required Modules
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
 
-db = "sqlite:///gst.db"
+# Database URL
+DB_URL = "sqlite:///./gst.db"
 
-engine = create_engine(db, connect_args={"check_same_thread": False})
+# Database Engine
+engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 
+# Database Session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Database Base
 Base = declarative_base()
 
+# Database Dependency
 def get_db():
     db = SessionLocal()
     try:
