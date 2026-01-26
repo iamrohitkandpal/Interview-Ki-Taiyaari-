@@ -95,7 +95,7 @@ async function sendAttackToModel(modelConfig, prompt) {
   if (provider === 'groq') {
     const groq = new Groq({ apiKey });
 
-    const completion = await groq.client.completions.create({
+    const completion = await groq.chat.completions.create({
       model: modelId || 'llma-3.3.-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 500,
