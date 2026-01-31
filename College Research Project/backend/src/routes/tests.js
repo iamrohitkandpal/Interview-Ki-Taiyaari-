@@ -27,7 +27,7 @@ router.post('/run', async (req, res) => {
 
       results.push({
         attackId: attack.id,
-        attackname: attack.name,
+        attackName: attack.name,
         category: attack.category,
         severity: attack.severity,
         prompt: attack.prompt,

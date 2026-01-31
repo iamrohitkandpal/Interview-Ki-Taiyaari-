@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { BarChart3, Menu, Settings, Shield, Target, X, Zap } from "lucide-react";
+import { BarChart3, Lock, Menu, Settings, Shield, Target, X, Zap } from "lucide-react";
 import useStore from "./store/useStore";
 import Dashboard from "./components/Dashboard";
 import ModelsPage from "./components/ModelsPage";
 import AttacksPage from "./components/AttacksPage";
 import TestPage from "./components/TestPage";
 import ResultsPage from "./components/ResultsPage";
+import DefensesPage from "./components/DefensesPage";
 import './index.css';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'models', label: 'Models', icon: Settings },
   { id: 'attacks', label: 'Attacks', icon: Target },
+  { id: 'defenses', label: 'Defenses', icon: Lock },
   { id: 'test', label: 'Run Test', icon: Zap },
   { id: 'results', label: 'Results', icon: Shield },
 ];
@@ -25,6 +27,7 @@ function App() {
       case 'dashboard': return <Dashboard />;
       case 'models': return <ModelsPage />;
       case 'attacks': return <AttacksPage />;
+      case 'defenses': return <DefensesPage />;
       case 'test': return <TestPage />;
       case 'results': return <ResultsPage />;
       default: return <Dashboard />;
@@ -34,7 +37,7 @@ function App() {
   return (
     <div className="min-h-screen bg-[#0f172a] flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-[#1e293b] border-r border-slate-700 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} glass-sidebar transition-all duration-300 flex flex-col`}>
         {/* Logo */}
         <div className="p-4 border-b border-slate-700 flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
