@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, Lock, Menu, Settings, Shield, Target, X, Zap } from "lucide-react";
+import { BarChart3, Lock, Menu, Settings, Shield, Target, X, Zap, GitCompare } from "lucide-react";
 import useStore from "./store/useStore";
 import Dashboard from "./components/Dashboard";
 import ModelsPage from "./components/ModelsPage";
@@ -7,6 +7,7 @@ import AttacksPage from "./components/AttacksPage";
 import TestPage from "./components/TestPage";
 import ResultsPage from "./components/ResultsPage";
 import DefensesPage from "./components/DefensesPage";
+import ComparePage from "./components/ComparePage";
 import './index.css';
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
   { id: 'defenses', label: 'Defenses', icon: Lock },
   { id: 'test', label: 'Run Test', icon: Zap },
   { id: 'results', label: 'Results', icon: Shield },
+  { id: 'compare', label: 'Compare', icon: GitCompare },
 ];
 
 function App() {
@@ -30,17 +32,25 @@ function App() {
       case 'defenses': return <DefensesPage />;
       case 'test': return <TestPage />;
       case 'results': return <ResultsPage />;
+      case 'compare': return <ComparePage />;
       default: return <Dashboard />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} glass-sidebar transition-all duration-300 flex flex-col`}>
+      <div className="bg-orb bg-orb-1" aria-hidden="true"></div>
+      <div className="bg-orb bg-orb-2" aria-hidden="true"></div>
+
+      {/* Sidebar Navigation */}
+      <aside
+        className={`${sidebarOpen ? 'w-64' : 'w-20'} glass-sidebar transition-all duration-300 flex flex-col`}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {/* Logo */}
         <div className="p-4 border-b border-slate-700 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center" aria-hidden="true">
             <Shield className="w-6 h-6 text-white" />
           </div>
           {sidebarOpen && (
@@ -52,19 +62,22 @@ function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
+        <nav className="flex-1 p-4" aria-label="Primary">
+          <ul className="space-y-2" role="menubar">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <li key={tab.id}>
+                <li key={tab.id} role="none">
                   <button
                     onClick={() => setActiveTab(tab.id)}
+                    role="menuitem"
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={sidebarOpen ? undefined : tab.label}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'
                       }`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-5 h-5" aria-hidden="true" />
                     {sidebarOpen && <span>{tab.label}</span>}
                   </button>
                 </li>
@@ -77,13 +90,20 @@ function App() {
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="p-4 border-t border-slate-700 text-slate-400 hover:text-white flex items-center justify-center"
+          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          aria-expanded={sidebarOpen}
         >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {sidebarOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
         </button>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 overflow-auto">
+      <main
+        id="main-content"
+        className="flex-1 p-6 overflow-auto"
+        role="main"
+        aria-label="Main content"
+      >
         {renderPage()}
       </main>
     </div>

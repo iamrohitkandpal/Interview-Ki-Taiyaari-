@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { FileText, Trash2, Eye, ChevronDown, ChevronUp, Copy, Check, AlertTriangle, Shield } from 'lucide-react';
+import { FileText, Trash2, Eye, ChevronDown, ChevronUp, Copy, Check, AlertTriangle, Shield, Download, FileJson, Printer } from 'lucide-react';
 import useStore from '../store/useStore';
+import { exportAsJSON, exportAsPDF, exportAllAsJSON, copyToClipboard as copyReport } from '../services/reportService';
 
 function ResultsPage() {
   const { testResults, setTestResults } = useStore();
@@ -39,10 +40,22 @@ function ResultsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <h1 className="text-3xl font-bold text-white">Test Results</h1>
-        <p className="text-slate-400 mt-1">View detailed attack prompts and model responses</p>
-        <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl"></div>
+      <div className="relative flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Test Results</h1>
+          <p className="text-slate-400 mt-1">View detailed attack prompts and model responses</p>
+        </div>
+        {testResults.length > 0 && (
+          <button
+            onClick={() => exportAllAsJSON(testResults)}
+            className="glass-button flex items-center gap-2 px-4 py-2 text-sm rounded-lg"
+            aria-label="Export all results as JSON"
+          >
+            <Download className="w-4 h-4" aria-hidden="true" />
+            Export All
+          </button>
+        )}
+        <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl" aria-hidden="true"></div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -60,8 +73,8 @@ function ResultsPage() {
                 key={result.id}
                 onClick={() => { setSelectedResult(result); setExpandedRows({}); }}
                 className={`glass-card p-4 cursor-pointer ${selectedResult?.id === result.id
-                    ? 'bg-indigo-500/20 border-indigo-500'
-                    : ''
+                  ? 'bg-indigo-500/20 border-indigo-500'
+                  : ''
                   }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -76,9 +89,9 @@ function ResultsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-sm">{result.totalAttacks} attacks</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${result.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
-                      result.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
-                        result.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-green-500/20 text-green-400'
+                    result.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                      result.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-green-500/20 text-green-400'
                     }`}>
                     {result.riskScore}% Risk
                   </span>
@@ -96,12 +109,46 @@ function ResultsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-white">{selectedResult.modelName}</h2>
-                  <p className="text-slate-400 text-sm">{selectedResult.provider} • {new Date(selectedResult.timestamp).toLocaleString()}</p>
+                  <p className="text-slate-400 text-sm">{selectedResult.provider} • {new Date(selectedResult.timestamp || selectedResult.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => exportAsJSON(selectedResult)}
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                    title="Export as JSON"
+                    aria-label="Export as JSON"
+                  >
+                    <FileJson className="w-5 h-5" aria-hidden="true" />
+                  </button>
+                  <button
+                    onClick={() => exportAsPDF(selectedResult)}
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                    title="Export as PDF"
+                    aria-label="Export as PDF"
+                  >
+                    <Printer className="w-5 h-5" aria-hidden="true" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await copyReport(selectedResult);
+                      setCopiedId('summary');
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                    title="Copy summary to clipboard"
+                    aria-label="Copy summary to clipboard"
+                  >
+                    {copiedId === 'summary' ? (
+                      <Check className="w-5 h-5 text-green-400" aria-hidden="true" />
+                    ) : (
+                      <Copy className="w-5 h-5" aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
                 <span className={`px-4 py-2 rounded-xl text-sm font-semibold ${selectedResult.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400 glow-red' :
-                    selectedResult.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
-                      selectedResult.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-green-500/20 text-green-400 glow-green'
+                  selectedResult.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
+                    selectedResult.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-green-500/20 text-green-400 glow-green'
                   }`}>
                   {selectedResult.riskLevel}
                 </span>
@@ -197,8 +244,8 @@ function ResultsPage() {
                             </button>
                           </div>
                           <pre className={`text-sm p-4 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-64 border ${r.vulnerable
-                              ? 'bg-red-500/5 border-red-500/30 text-red-200'
-                              : 'bg-green-500/5 border-green-500/30 text-green-200'
+                            ? 'bg-red-500/5 border-red-500/30 text-red-200'
+                            : 'bg-green-500/5 border-green-500/30 text-green-200'
                             }`}>
                             {r.response || 'Response not available'}
                           </pre>
