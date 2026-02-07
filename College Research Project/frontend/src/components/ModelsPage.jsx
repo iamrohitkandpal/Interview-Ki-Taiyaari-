@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wifi, WifiOff, Server } from 'lucide-react';
 import { modelsAPI } from '../services/api';
 import useStore from '../store/useStore';
 
@@ -76,15 +76,16 @@ function ModelsPage() {
                 </div>
                 <button
                     onClick={() => setShowForm(!showForm)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                    className="glass-button flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium"
                 >
                     <Plus className="w-5 h-5" />
                     Add Model
                 </button>
             </div>
 
+            {/* Add Model Form - Glass Panel */}
             {showForm && (
-                <form onSubmit={handleSubmit} className="bg-[#1e293b] rounded-xl p-6 border border-slate-700 space-y-4">
+                <form onSubmit={handleSubmit} className="glass-panel p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-slate-400 mb-2">Model Name</label>
@@ -93,7 +94,7 @@ function ModelsPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="My GPT-4 Model"
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                                className="glass-input w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 focus:outline-none"
                                 required
                             />
                         </div>
@@ -102,7 +103,7 @@ function ModelsPage() {
                             <select
                                 value={formData.provider}
                                 onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                                className="glass-input w-full px-4 py-2.5 rounded-xl text-white focus:outline-none"
                             >
                                 {providers.map((p) => (
                                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -116,7 +117,7 @@ function ModelsPage() {
                                 value={formData.apiKey}
                                 onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                                 placeholder="sk-..."
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                                className="glass-input w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 focus:outline-none"
                             />
                         </div>
                         <div>
@@ -124,7 +125,7 @@ function ModelsPage() {
                             <select
                                 value={formData.modelId}
                                 onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                                className="glass-input w-full px-4 py-2.5 rounded-xl text-white focus:outline-none"
                             >
                                 <option value="">Select model...</option>
                                 {providers.find(p => p.id === formData.provider)?.models.map((m) => (
@@ -133,38 +134,68 @@ function ModelsPage() {
                             </select>
                         </div>
                     </div>
-                    <div className="flex gap-3">
-                        <button type="submit" disabled={loading} className="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 flex items-center gap-2">
+                    <div className="flex gap-3 pt-2">
+                        <button 
+                            type="submit" 
+                            disabled={loading} 
+                            className="glass-button px-6 py-2.5 text-white rounded-xl disabled:opacity-50 flex items-center gap-2 font-medium"
+                        >
                             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                             Add Model
                         </button>
-                        <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600">
+                        <button 
+                            type="button" 
+                            onClick={() => setShowForm(false)} 
+                            className="px-6 py-2.5 bg-slate-700/50 text-white rounded-xl hover:bg-slate-600/50 backdrop-blur-sm"
+                        >
                             Cancel
                         </button>
                     </div>
                 </form>
             )}
 
+            {/* Models List - Glass Cards */}
             <div className="grid gap-4">
                 {models.length === 0 ? (
-                    <div className="bg-[#1e293b] rounded-xl p-12 border border-slate-700 text-center">
+                    <div className="glass-panel p-12 text-center">
+                        <Server className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                         <p className="text-slate-400">No models connected yet. Add one to start testing!</p>
                     </div>
                 ) : (
                     models.map((model) => (
-                        <div key={model.id} className="bg-[#1e293b] rounded-xl p-6 border border-slate-700 flex items-center justify-between">
+                        <div 
+                            key={model.id} 
+                            className="glass-card p-5 flex items-center justify-between"
+                        >
                             <div className="flex items-center gap-4">
-                                <div className={`w-3 h-3 rounded-full ${model.status === 'connected' ? 'bg-green-500' : model.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                    model.status === 'connected' 
+                                        ? 'bg-green-500/20' 
+                                        : model.status === 'error' 
+                                            ? 'bg-red-500/20' 
+                                            : 'bg-yellow-500/20'
+                                }`}>
+                                    {model.status === 'connected' 
+                                        ? <Wifi className="w-5 h-5 text-green-400" />
+                                        : <WifiOff className="w-5 h-5 text-yellow-400" />
+                                    }
+                                </div>
                                 <div>
                                     <h3 className="text-white font-medium">{model.name}</h3>
                                     <p className="text-slate-400 text-sm">{model.provider} • {model.modelId}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <button onClick={() => handleTest(model.id)} className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 text-sm">
+                                <button 
+                                    onClick={() => handleTest(model.id)} 
+                                    className="px-4 py-2 bg-slate-700/50 text-white rounded-lg hover:bg-slate-600/50 text-sm backdrop-blur-sm transition-all"
+                                >
                                     Test Connection
                                 </button>
-                                <button onClick={() => handleDelete(model.id)} className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg">
+                                <button 
+                                    onClick={() => handleDelete(model.id)} 
+                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-all"
+                                >
                                     <Trash2 className="w-5 h-5" />
                                 </button>
                             </div>
