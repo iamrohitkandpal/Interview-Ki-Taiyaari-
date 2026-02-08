@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/status-research%20%26%20testing-yellow?style=for-the-badge" alt="Status: Research & Testing" />
   <img src="https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-blue?style=for-the-badge" alt="OWASP LLM Top 10" />
+  <img src="https://img.shields.io/badge/WCAG-2.1%20AA-green?style=for-the-badge" alt="WCAG 2.1 AA" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License: MIT" />
 </p>
 
@@ -37,42 +38,11 @@ PromptShield addresses this gap by providing a **structured, research-backed pla
 
 ---
 
-## 🔬 Research Foundation
-
-This project is grounded in cutting-edge AI security research. Our attack taxonomy and defense mechanisms are derived from:
-
-### Primary References
-
-| Source | Description | Year |
-|--------|-------------|------|
-| [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) | Industry-standard vulnerability classification for LLM systems | 2025 |
-| [MITRE ATLAS](https://atlas.mitre.org/) | Adversarial Threat Landscape for AI Systems | 2024 |
-| [Anthropic: Many-Shot Jailbreaking](https://www.anthropic.com/research/many-shot-jailbreaking) | Research on in-context learning exploitation | 2024 |
-| [Microsoft: Crescendo Attack](https://www.microsoft.com/en-us/security/blog/) | Multi-turn manipulation techniques | 2024 |
-| [arXiv: Universal Adversarial Triggers](https://arxiv.org/) | Token-level adversarial attacks on LLMs | 2023 |
-
-### Academic Papers Informing Our Methodology
-
-```
-[1] Perez, F., & Ribeiro, I. (2022). "Ignore This Title and HackAPrompt: Exposing 
-    Systemic Vulnerabilities of LLMs through a Global Scale Prompt Hacking Competition."
-    
-[2] Greshake, K., et al. (2023). "Not What You've Signed Up For: Compromising 
-    Real-World LLM-Integrated Applications with Indirect Prompt Injection."
-    
-[3] Liu, Y., et al. (2024). "Jailbreaking ChatGPT via Prompt Engineering: 
-    An Empirical Study." arXiv:2305.13860.
-    
-[4] Zou, A., et al. (2023). "Universal and Transferable Adversarial Attacks 
-    on Aligned Language Models." arXiv:2307.15043.
-```
-
----
-
 ## ✨ Key Features
 
 ### 🎯 Attack Simulation Engine
-- **45+ Pre-built Attack Vectors** across 6 OWASP-aligned categories
+- **52+ Pre-built Attack Vectors** across 7 OWASP-aligned categories
+- MITRE ATLAS mapping for enterprise alignment
 - Support for custom attack creation and batch testing
 - Real-time execution with detailed logging
 
@@ -87,12 +57,52 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 ### 📊 Risk Assessment & Reporting
 - Weighted severity scoring (Critical → Low)
 - Confidence-based vulnerability detection
-- Exportable security reports
+- **Export reports as JSON or PDF**
+- Copy results to clipboard
+
+### 🔄 Model Comparison
+- Side-by-side security comparison of two models
+- Category-by-category breakdown
+- Visual risk difference indicators
+- Security verdict with recommendations
+
+### 🔐 Security & Compliance
+- **OWASP 2025 Security Standards**
+  - Helmet.js for security headers
+  - Rate limiting (DDoS protection)
+  - CORS with whitelist
+  - Secure error handling
+- **WCAG 2.1 AA Accessibility**
+  - ARIA labels on all interactive elements
+  - Keyboard navigation support
+  - Screen reader optimized
+  - Reduced motion support
+
+### 💾 Data Persistence
+- **LocalStorage persistence** via Zustand middleware
+- Models, attacks, and results survive page refresh
+- No data loss on browser close
 
 ### 🔌 Multi-Provider LLM Support
 - Groq (Llama 3, Mixtral)
 - OpenAI (GPT-4, GPT-3.5)
 - Ollama (Local/Self-hosted models)
+
+---
+
+## 🔬 Research Foundation
+
+This project is grounded in cutting-edge AI security research. Our attack taxonomy and defense mechanisms are derived from:
+
+### Primary References
+
+| Source | Description | Year |
+|--------|-------------|------|
+| [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) | Industry-standard vulnerability classification for LLM systems | 2025 |
+| [MITRE ATLAS](https://atlas.mitre.org/) | Adversarial Threat Landscape for AI Systems | 2024 |
+| [Anthropic: Many-Shot Jailbreaking](https://www.anthropic.com/research/many-shot-jailbreaking) | Research on in-context learning exploitation | 2024 |
+| [Microsoft: Crescendo Attack](https://www.microsoft.com/en-us/security/blog/) | Multi-turn manipulation techniques | 2024 |
+| [arXiv: Universal Adversarial Triggers](https://arxiv.org/) | Token-level adversarial attacks on LLMs | 2023 |
 
 ---
 
@@ -109,15 +119,17 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 │  └──────────────┘    └──────────────┘    └──────────────┘       │
 │         │                   │                                    │
 │         ▼                   ▼                                    │
-│  ┌──────────────┐    ┌──────────────┐                           │
-│  │   Zustand    │    │   Attack     │                           │
-│  │ State Mgmt   │    │   Library    │                           │
-│  └──────────────┘    └──────────────┘                           │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │   Zustand    │    │   Attack     │    │   Security   │       │
+│  │  + Persist   │    │   Library    │    │  Middleware  │       │
+│  │ (localStorage)│    │  (52+ atks) │    │  (Helmet)    │       │
+│  └──────────────┘    └──────────────┘    └──────────────┘       │
 │                             │                                    │
 │                             ▼                                    │
 │                      ┌──────────────┐                           │
 │                      │  Risk Score  │                           │
 │                      │   Engine     │                           │
+│                      │ (80+ rules)  │                           │
 │                      └──────────────┘                           │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -139,9 +151,10 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | **Frontend** | React 18 + Vite | Modern, fast UI development |
-| **Styling** | TailwindCSS 4.0 | Utility-first CSS framework |
-| **State** | Zustand | Lightweight state management |
+| **Styling** | TailwindCSS 4.0 + Glassmorphism | Premium dark-mode UI |
+| **State** | Zustand + Persist | LocalStorage-backed state management |
 | **Backend** | Node.js + Express | RESTful API server |
+| **Security** | Helmet + express-rate-limit | OWASP-compliant middleware |
 | **LLM Integration** | Groq SDK, OpenAI SDK | Multi-provider model access |
 | **Icons** | Lucide React | Consistent icon system |
 
@@ -153,24 +166,33 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 promptshield/
 ├── 📁 frontend/               # React frontend application
 │   ├── src/
-│   │   ├── components/        # UI components (Dashboard, Models, Attacks, etc.)
-│   │   ├── services/          # API client
-│   │   ├── store/             # Zustand state management
-│   │   └── ...
-│   └── README.md              # Frontend-specific documentation
+│   │   ├── components/        # UI components
+│   │   │   ├── Dashboard.jsx      # Onboarding + stats
+│   │   │   ├── ModelsPage.jsx     # LLM configuration
+│   │   │   ├── AttacksPage.jsx    # Attack selection
+│   │   │   ├── DefensesPage.jsx   # Defense sandbox
+│   │   │   ├── TestPage.jsx       # Test execution
+│   │   │   ├── ResultsPage.jsx    # Results + export
+│   │   │   └── ComparePage.jsx    # Model comparison
+│   │   ├── services/
+│   │   │   ├── api.js             # Axios client
+│   │   │   └── reportService.js   # Export utilities
+│   │   ├── store/
+│   │   │   └── useStore.js        # Zustand + persist
+│   │   └── index.css              # Glassmorphism styles
+│   └── index.html             # SEO + accessibility
 │
 ├── 📁 backend/                # Express backend API
 │   ├── src/
 │   │   ├── routes/
-│   │   │   ├── attacks.js     # Attack library (45+ vectors)
+│   │   │   ├── attacks.js     # Attack library (52+ vectors)
 │   │   │   ├── defences.js    # Defense mechanisms
 │   │   │   ├── tests.js       # Test execution engine
-│   │   │   ├── models.js      # LLM model management
-│   │   │   └── compare.js     # Comparison endpoints
-│   │   └── index.js           # Server entry point
-│   └── README.md              # Backend-specific documentation
+│   │   │   └── models.js      # LLM model management
+│   │   └── index.js           # Server + security middleware
+│   └── .env.example           # Environment template
 │
-├── 📄 instructions.md         # Project requirements & mentor feedback
+├── 📄 instructions.md         # Project requirements
 └── 📄 README.md               # This file
 ```
 
@@ -203,9 +225,10 @@ npm install
 ### Configuration
 
 ```bash
-# In backend folder, create .env file
+# In backend folder, create .env file from template
 cd backend
-echo "PORT=3001" > .env
+cp .env.example .env
+# Edit .env and add your GROQ_API_KEY
 ```
 
 ### Running the Application
@@ -224,29 +247,21 @@ Open your browser at `http://localhost:5173`
 
 ---
 
-## 📖 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Frontend README](./frontend/README.md) | React application architecture, components, state management |
-| [Backend README](./backend/README.md) | API endpoints, attack library, defense mechanisms |
-| [Project Requirements](./instructions.md) | Original project scope and mentor feedback |
-
----
-
 ## 🔮 Roadmap
 
 ### Phase 1: Core Platform ✅
-- [x] Attack library with OWASP-aligned taxonomy
+- [x] Attack library with OWASP-aligned taxonomy (52+ attacks)
 - [x] Multi-provider LLM integration
 - [x] Real-time test execution
-- [x] Risk scoring system
+- [x] Risk scoring system (80+ detection rules)
 
-### Phase 2: Advanced Features 🚧
-- [ ] Defense sandbox with re-testing
-- [ ] Model comparison dashboard
-- [ ] Export reports (PDF/JSON)
-- [ ] Custom attack builder UI
+### Phase 2: Advanced Features ✅
+- [x] Defense sandbox with re-testing
+- [x] Model comparison dashboard
+- [x] Export reports (PDF/JSON)
+- [x] LocalStorage persistence
+- [x] OWASP security middleware
+- [x] WCAG accessibility compliance
 
 ### Phase 3: Research Extensions 📋
 - [ ] Benchmark dataset generation
