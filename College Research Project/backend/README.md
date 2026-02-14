@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/API-RESTful-blue?style=for-the-badge" alt="RESTful API" />
 </p>
 
-<h1 align="center">🔧 PromptShield Backend</h1>
+<h1 align="center">🔧 Bhisma Backend</h1>
 
 <p align="center">
   <strong>The Security Intelligence Engine</strong>
@@ -31,7 +31,7 @@
 
 ## 🎯 Overview
 
-The PromptShield backend serves as the **security intelligence core** of the platform. It manages:
+The Bhisma backend serves as the **security intelligence core** of the platform. It manages:
 
 1. **Attack Library** — 45+ categorized attack vectors sourced from OWASP, academic research, and real-world CVEs
 2. **Defense Mechanisms** — 8 research-backed protection strategies

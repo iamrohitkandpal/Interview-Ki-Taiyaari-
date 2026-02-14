@@ -1,5 +1,5 @@
 {
-  "name": "promptshield-backend",
+  "name": "bhisma-backend",
   "version": "1.0.0",
   "description": "LLM Security Testing Platform - Backend",
   "main": "src/index.js",

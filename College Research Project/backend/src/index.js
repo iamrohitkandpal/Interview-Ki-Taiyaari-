@@ -92,7 +92,7 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
     res.json({
         status: "ok",
-        message: "PromptShield API is running",
+        message: "Bhisma API is running",
         version: '1.0.0',
         security: {
             helmet: true,
@@ -143,7 +143,7 @@ app.use((err, req, res, next) => {
 // SERVER STARTUP
 // ============================================
 app.listen(PORT, () => {
-    console.log(`\n🛡️  PromptShield API running on port ${PORT}`);
+    console.log(`\n🛡️  Bhisma API running on port ${PORT}`);
     console.log(`📍 Endpoints: /models, /attacks, /tests, /defenses, /compare`);
     console.log(`🔒 Security: Helmet ✓ | Rate Limiting ✓ | CORS ✓`);
     console.log(`\n`);

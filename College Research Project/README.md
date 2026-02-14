@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License: MIT" />
 </p>
 
-<h1 align="center">🛡️ PromptShield</h1>
+<h1 align="center">🛡️ Bhisma</h1>
 
 <p align="center">
   <strong>An Open-Source LLM Security Testing & Red-Teaming Platform</strong>
@@ -34,7 +34,7 @@ The consequences are real:
 - **Data Leakage** can expose system prompts, API keys, and confidential information
 - **Agentic Risks** can lead to unauthorized actions with real-world impact
 
-PromptShield addresses this gap by providing a **structured, research-backed platform** for testing LLM security.
+Bhisma addresses this gap by providing a **structured, research-backed platform** for testing LLM security.
 
 ---
 
@@ -60,11 +60,16 @@ PromptShield addresses this gap by providing a **structured, research-backed pla
 - **Export reports as JSON or PDF**
 - Copy results to clipboard
 
-### 🔄 Model Comparison
+### 🔄 Advanced Model Comparison
 - Side-by-side security comparison of two models
-- Category-by-category breakdown
-- Visual risk difference indicators
-- Security verdict with recommendations
+- **Research Reliability Metrics** (warns if sample size N < 5)
+- **Statistical Validity Checks** (flags skewed attack vector counts)
+- Visual risk difference indicators & category breakdown
+
+### 🧪 Research Lab Design
+- **Defense Console:** Terminal-style interface for white-box testing
+- **Audit Registry:** Detailed logging with JSON/PDF export for reproducibility
+- **Neumorphic UI:** High-density data visualization for security professionals
 
 ### 🔐 Security & Compliance
 - **OWASP 2025 Security Standards**
@@ -110,7 +115,7 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        PromptShield                              │
+│                           Bhisma                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
@@ -163,7 +168,7 @@ This project is grounded in cutting-edge AI security research. Our attack taxono
 ## 📂 Project Structure
 
 ```
-promptshield/
+bhisma/
 ├── 📁 frontend/               # React frontend application
 │   ├── src/
 │   │   ├── components/        # UI components
@@ -210,8 +215,8 @@ promptshield/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/promptshield.git
-cd promptshield
+git clone https://github.com/yourusername/bhisma.git
+cd bhisma
 
 # Install backend dependencies
 cd backend

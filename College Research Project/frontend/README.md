@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Zustand-State-443E38?style=for-the-badge&logo=react&logoColor=white" alt="Zustand" />
 </p>
 
-<h1 align="center">🎨 PromptShield Frontend</h1>
+<h1 align="center">🎨 Bhisma Frontend</h1>
 
 <p align="center">
   <strong>The Security Dashboard Experience</strong>
@@ -33,7 +33,7 @@
 
 ## 🎯 Overview
 
-The PromptShield frontend delivers a **professional-grade security dashboard** that transforms complex LLM vulnerability testing into an intuitive workflow:
+The Bhisma frontend delivers a **professional-grade security dashboard** that transforms complex LLM vulnerability testing into an intuitive workflow:
 
 ```
 Dashboard → Models → Attacks → Test → Results
