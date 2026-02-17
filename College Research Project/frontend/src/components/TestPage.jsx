@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Zap, CheckCircle, XCircle, AlertTriangle, Play, Square, Clock } from 'lucide-react';
+import { Zap, CheckCircle, XCircle, AlertTriangle, Play, Square, Clock, Scan, Shield } from 'lucide-react';
 import useStore from '../store/useStore';
 import api from '../services/api';
 
@@ -7,6 +7,8 @@ function TestPage() {
     const { models, selectedAttacks, addTestResult, isTestRunning, setTestRunning, testProgress, setTestProgress, resetTestProgress, setActiveTab } = useStore();
     const [selectedModel, setSelectedModel] = useState('');
     const [error, setError] = useState('');
+    const [systemPrompt, setSystemPrompt] = useState('');
+    const [isAutoScan, setIsAutoScan] = useState(false);
 
     // Reset when component mounts
     useEffect(() => {
@@ -38,9 +40,6 @@ function TestPage() {
                     endpoint: model.endpoint
                 },
                 attackIds: selectedAttacks,
-                onProgress: (progress) => {
-                    setTestProgress(progress);
-                }
             });
 
             // Add result to store (persisted to localStorage)
@@ -64,7 +63,53 @@ function TestPage() {
     const handleStopTest = () => {
         setTestRunning(false);
         resetTestProgress();
+        setIsAutoScan(false);
         setError('Test cancelled by user');
+    };
+
+    // =============================================
+    // AUTO-SCAN: Runs curated attacks automatically
+    // =============================================
+    const handleAutoScan = async () => {
+        if (!selectedModel) {
+            setError('Please select a model');
+            return;
+        }
+
+        setError('');
+        setIsAutoScan(true);
+        setTestRunning(true);
+        setTestProgress({ current: 0, total: 15, currentAttack: 'Initializing automated scan...' });
+
+        try {
+            const model = models.find(m => m.id === selectedModel);
+
+            const response = await api.post('/tests/auto-scan', {
+                modelConfig: {
+                    name: model.name,
+                    provider: model.provider,
+                    apiKey: model.apiKey,
+                    modelId: model.modelId,
+                    endpoint: model.endpoint
+                },
+                systemPrompt: systemPrompt || undefined
+            });
+
+            addTestResult({
+                modelId: model.id,
+                modelName: model.name,
+                provider: model.provider,
+                ...response.data
+            });
+
+            setActiveTab('results');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Auto-scan failed. Please try again.');
+        } finally {
+            setTestRunning(false);
+            setIsAutoScan(false);
+            resetTestProgress();
+        }
     };
 
     const progressPercent = testProgress.total > 0
@@ -158,26 +203,78 @@ function TestPage() {
                     )}
 
                     {/* Run Button */}
-                    <button
-                        onClick={isTestRunning ? handleStopTest : handleRunTest}
-                        disabled={!selectedModel || selectedAttacks.length === 0}
-                        className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${isTestRunning
+                    <div className="space-y-3">
+                        <button
+                            onClick={isTestRunning ? handleStopTest : handleRunTest}
+                            disabled={!selectedModel || selectedAttacks.length === 0}
+                            className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${isTestRunning && !isAutoScan
                                 ? 'bg-red-500 hover:bg-red-600 text-white'
                                 : 'glass-button disabled:opacity-50 disabled:cursor-not-allowed'
-                            }`}
-                    >
-                        {isTestRunning ? (
-                            <>
-                                <Square className="w-5 h-5" />
-                                Stop Test
-                            </>
-                        ) : (
-                            <>
-                                <Play className="w-5 h-5" />
-                                Run Security Test
-                            </>
-                        )}
-                    </button>
+                                }`}
+                        >
+                            {isTestRunning && !isAutoScan ? (
+                                <>
+                                    <Square className="w-5 h-5" />
+                                    Stop Test
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="w-5 h-5" />
+                                    Run Manual Test
+                                </>
+                            )}
+                        </button>
+
+                        {/* Divider */}
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-700"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs">
+                                <span className="px-3 bg-slate-800/80 text-slate-500">OR</span>
+                            </div>
+                        </div>
+
+                        {/* Auto Scan Button */}
+                        <button
+                            onClick={isTestRunning ? handleStopTest : handleAutoScan}
+                            disabled={!selectedModel}
+                            className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${isTestRunning && isAutoScan
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                                }`}
+                        >
+                            {isTestRunning && isAutoScan ? (
+                                <>
+                                    <Square className="w-5 h-5" />
+                                    Stop Auto-Scan
+                                </>
+                            ) : (
+                                <>
+                                    <Scan className="w-5 h-5" />
+                                    ⚡ Auto-Scan (15 Attacks)
+                                </>
+                            )}
+                        </button>
+                        <p className="text-xs text-slate-500 text-center">Auto-scan runs curated attacks across all categories including context boundary testing</p>
+                    </div>
+
+                    {/* System Prompt (for Auto-Scan) */}
+                    <div>
+                        <label htmlFor="system-prompt" className="block text-sm text-slate-400 mb-2">
+                            <Shield className="w-4 h-4 inline mr-1" />
+                            System Prompt / Model Role <span className="text-slate-600">(optional)</span>
+                        </label>
+                        <textarea
+                            id="system-prompt"
+                            value={systemPrompt}
+                            onChange={(e) => setSystemPrompt(e.target.value)}
+                            placeholder="e.g. You are a coding assistant. Only answer programming questions."
+                            className="glass-input w-full px-4 py-3 rounded-xl text-sm resize-none h-20"
+                            disabled={isTestRunning}
+                        />
+                        <p className="text-xs text-slate-600 mt-1">Used for context boundary testing — checks if model stays in scope</p>
+                    </div>
                 </div>
 
                 {/* Progress Panel */}
@@ -232,7 +329,7 @@ function TestPage() {
                                 {isTestRunning && (
                                     <div className="flex items-center gap-2 text-yellow-400 text-sm">
                                         <Clock className="w-4 h-4 animate-pulse" />
-                                        <span>Test in progress...</span>
+                                        <span>{isAutoScan ? 'Running automated security scan...' : 'Test in progress...'}</span>
                                     </div>
                                 )}
 
