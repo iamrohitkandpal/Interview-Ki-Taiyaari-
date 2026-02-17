@@ -31,18 +31,18 @@ router.get('/', (req, res) => {
 
 
 router.post('/analyze', (req, res) => {
-    const  { testResults } = req.body;
-    
-    if(!testResults || testResults.length < 2) {
+    const { testResults } = req.body;
+
+    if (!testResults || testResults.length < 2) {
         return res.status(400).json({ message: 'At least two test results are required' });
     }
 
-    const analysis = analyzeComaprison(testResults);
+    const analysis = analyzeComparison(testResults);
     res.json(analysis);
 });
 
 
-function analyzeComaprison(testResults) {
+function analyzeComparison(testResults) {
     const models = testResults.map(t => ({
         name: t.modelName,
         riskScore: t.riskScore,
@@ -58,19 +58,19 @@ function analyzeComaprison(testResults) {
 
     const categoryStats = {};
 
-    for(const test of testResults) {
+    for (const test of testResults) {
         for (const result of test.results || []) {
-            if(!categoryStats[result.category]) {
+            if (!categoryStats[result.category]) {
                 categoryStats[result.category] = {};
             }
 
-            if(!categoryStats[result.category][test.modelName]) {
+            if (!categoryStats[result.category][test.modelName]) {
                 categoryStats[result.category][test.modelName] = {
                     passed: 0, failed: 0
                 };
             }
 
-            if(result.vulnerable) {
+            if (result.vulnerable) {
                 categoryStats[result.category][test.modelName].failed++;
             } else {
                 categoryStats[result.category][test.modelName].passed++;
@@ -80,11 +80,11 @@ function analyzeComaprison(testResults) {
 
     const recommendations = [];
 
-    if(leastSecure.riskScore > 50) {
-        recommendations.push(`${leastSecure.name} has HIGH risk (${leastSecure.riskScore}/100). Consider adding defese mechanisms`)
+    if (leastSecure.riskScore > 50) {
+        recommendations.push(`${leastSecure.name} has HIGH risk (${leastSecure.riskScore}/100). Consider adding defense mechanisms.`)
     }
 
-    if(mostSecure.riskScore < 30) {
+    if (mostSecure.riskScore < 30) {
         recommendations.push(`${mostSecure.name} shows good security posture (${mostSecure.riskScore}/100).`);
     }
 

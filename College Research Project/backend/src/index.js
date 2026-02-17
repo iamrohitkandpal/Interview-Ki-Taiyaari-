@@ -9,7 +9,7 @@ import testsRouter from './routes/tests.js'
 import defencesRouter from './routes/defences.js'
 import compareRouter from './routes/compare.js'
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -60,6 +60,7 @@ const testLimiter = rateLimit({
     }
 });
 app.use('/tests/run', testLimiter);
+app.use('/tests/auto-scan', testLimiter);
 
 // ============================================
 // CORS Configuration

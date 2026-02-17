@@ -55,23 +55,71 @@ router.delete('/:id', (req, res) => {
 });
 
 async function testModelConnection(model) {
-    const testPrompt = "Sat 'Hello in one word."
+    const testPrompt = "Say 'Hello' in one word."
 
     try {
         if (model.provider === 'groq') {
             const { default: Groq } = await import('groq-sdk');
             const groq = new Groq({ apiKey: model.apiKey });
 
-            const response = await groq.chat.completions.create({
-                model: model.modelId || 'llma-3.3-70b-versatile',
+            await groq.chat.completions.create({
+                model: model.modelId || 'llama-3.3-70b-versatile',
                 messages: [{ role: 'user', content: testPrompt }],
                 max_tokens: 10
             });
 
-            return { success: true, message: 'Connected successfully!' };
+            return { success: true, message: 'Connected to Groq successfully!' };
         }
 
-        return { success: false, message: 'Unknown provider' };
+        if (model.provider === 'openai') {
+            const { default: OpenAI } = await import('openai');
+            const openai = new OpenAI({ apiKey: model.apiKey });
+
+            await openai.chat.completions.create({
+                model: model.modelId || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: testPrompt }],
+                max_tokens: 10
+            });
+
+            return { success: true, message: 'Connected to OpenAI successfully!' };
+        }
+
+        if (model.provider === 'ollama') {
+            const { default: OpenAI } = await import('openai');
+            const ollama = new OpenAI({
+                baseURL: model.endpoint || 'http://localhost:11434/v1',
+                apiKey: 'ollama', // Ollama doesn't need a real key
+            });
+
+            await ollama.chat.completions.create({
+                model: model.modelId || 'llama2',
+                messages: [{ role: 'user', content: testPrompt }],
+                max_tokens: 10
+            });
+
+            return { success: true, message: 'Connected to Ollama successfully!' };
+        }
+
+        if (model.provider === 'custom') {
+            if (!model.endpoint) {
+                return { success: false, message: 'Endpoint URL is required for custom models' };
+            }
+            const { default: OpenAI } = await import('openai');
+            const client = new OpenAI({
+                baseURL: model.endpoint,
+                apiKey: model.apiKey || 'none', // Many local servers don't need a key
+            });
+
+            await client.chat.completions.create({
+                model: model.modelId || 'default',
+                messages: [{ role: 'user', content: testPrompt }],
+                max_tokens: 10
+            });
+
+            return { success: true, message: 'Connected to custom endpoint successfully!' };
+        }
+
+        return { success: false, message: `Unknown provider: ${model.provider}` };
     } catch (error) {
         return { success: false, message: error.message };
     }
