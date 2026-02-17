@@ -1,5 +1,5 @@
 /**
- * Report Service - Export functionality for PromptShield
+ * Report Service - Export functionality for Bhisma
  * Provides JSON export and PDF generation via browser print
  */
 
@@ -9,44 +9,44 @@
  * @param {string} filename - Optional custom filename
  */
 export const exportAsJSON = (result, filename) => {
-    const exportData = {
-        exportedAt: new Date().toISOString(),
-        version: '1.0.0',
-        platform: 'PromptShield',
-        testResult: {
-            id: result.id,
-            modelName: result.modelName,
-            provider: result.provider,
-            timestamp: result.createdAt,
-            summary: {
-                totalAttacks: result.totalAttacks,
-                passed: result.passed,
-                failed: result.failed,
-                riskScore: result.riskScore,
-                riskLevel: result.riskLevel
-            },
-            results: result.results?.map(r => ({
-                attackName: r.attackName,
-                category: r.category,
-                severity: r.severity,
-                vulnerable: r.vulnerable,
-                confidence: r.confidence,
-                reason: r.reason,
-                prompt: r.prompt,
-                response: r.response
-            }))
-        }
-    };
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    version: '1.0.0',
+    platform: 'Bhisma',
+    testResult: {
+      id: result.id,
+      modelName: result.modelName,
+      provider: result.provider,
+      timestamp: result.createdAt,
+      summary: {
+        totalAttacks: result.totalAttacks,
+        passed: result.passed,
+        failed: result.failed,
+        riskScore: result.riskScore,
+        riskLevel: result.riskLevel
+      },
+      results: result.results?.map(r => ({
+        attackName: r.attackName,
+        category: r.category,
+        severity: r.severity,
+        vulnerable: r.vulnerable,
+        confidence: r.confidence,
+        reason: r.reason,
+        prompt: r.prompt,
+        response: r.response
+      }))
+    }
+  };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || `promptshield-report-${result.modelName}-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `bhisma-report-${result.modelName}-${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -54,32 +54,32 @@ export const exportAsJSON = (result, filename) => {
  * @param {Array} results - Array of test results
  */
 export const exportAllAsJSON = (results) => {
-    const exportData = {
-        exportedAt: new Date().toISOString(),
-        version: '1.0.0',
-        platform: 'PromptShield',
-        totalTests: results.length,
-        testResults: results.map(r => ({
-            id: r.id,
-            modelName: r.modelName,
-            riskScore: r.riskScore,
-            riskLevel: r.riskLevel,
-            totalAttacks: r.totalAttacks,
-            passed: r.passed,
-            failed: r.failed,
-            timestamp: r.createdAt
-        }))
-    };
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    version: '1.0.0',
+    platform: 'Bhisma',
+    totalTests: results.length,
+    testResults: results.map(r => ({
+      id: r.id,
+      modelName: r.modelName,
+      riskScore: r.riskScore,
+      riskLevel: r.riskLevel,
+      totalAttacks: r.totalAttacks,
+      passed: r.passed,
+      failed: r.failed,
+      timestamp: r.createdAt
+    }))
+  };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `promptshield-all-results-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bhisma-all-results-${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -87,16 +87,16 @@ export const exportAllAsJSON = (results) => {
  * @param {Object} result - Test result object
  */
 export const exportAsPDF = (result) => {
-    const printWindow = window.open('', '_blank');
+  const printWindow = window.open('', '_blank');
 
-    const vulnerableResults = result.results?.filter(r => r.vulnerable) || [];
-    const safeResults = result.results?.filter(r => !r.vulnerable) || [];
+  const vulnerableResults = result.results?.filter(r => r.vulnerable) || [];
+  const safeResults = result.results?.filter(r => !r.vulnerable) || [];
 
-    const html = `
+  const html = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>PromptShield Security Report - ${result.modelName}</title>
+      <title>Bhisma Security Report - ${result.modelName}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -199,7 +199,7 @@ export const exportAsPDF = (result) => {
     </head>
     <body>
       <div class="header">
-        <h1>🛡️ PromptShield Security Report</h1>
+        <h1>🛡️ Bhisma Security Report</h1>
         <p class="subtitle">Model: ${result.modelName} | Generated: ${new Date().toLocaleString()}</p>
       </div>
 
@@ -277,7 +277,7 @@ export const exportAsPDF = (result) => {
       </div>
 
       <div class="footer">
-        <p>Generated by PromptShield - LLM Security Testing Platform</p>
+        <p>Generated by Bhisma - LLM Security Testing Platform</p>
         <p>Report ID: ${result.id}</p>
       </div>
 
@@ -288,8 +288,8 @@ export const exportAsPDF = (result) => {
     </html>
   `;
 
-    printWindow.document.write(html);
-    printWindow.document.close();
+  printWindow.document.write(html);
+  printWindow.document.close();
 };
 
 /**
@@ -297,8 +297,8 @@ export const exportAsPDF = (result) => {
  * @param {Object} result - Test result object
  */
 export const copyToClipboard = async (result) => {
-    const summary = `
-PromptShield Security Report
+  const summary = `
+Bhisma Security Report
 ============================
 Model: ${result.modelName}
 Risk Score: ${result.riskScore}% (${result.riskLevel})
@@ -312,6 +312,6 @@ ${result.results?.filter(r => r.vulnerable).map(r => `• ${r.attackName} (${r.c
 Generated: ${new Date().toLocaleString()}
   `.trim();
 
-    await navigator.clipboard.writeText(summary);
-    return true;
+  await navigator.clipboard.writeText(summary);
+  return true;
 };

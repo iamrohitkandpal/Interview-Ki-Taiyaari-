@@ -523,3 +523,41 @@ button, a, input, textarea, select {
     box-shadow: none;
   }
 }
+
+/* ============================================
+   TOAST NOTIFICATION ANIMATION
+   ============================================ */
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================
+   SIDEBAR NAVIGATION - Smooth Button Clicks
+   Fixes "sticky" feel by using GPU-accelerated
+   transforms and optimized transition timing
+   ============================================ */
+.glass-sidebar nav button {
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+}
+
+.glass-sidebar nav button:active {
+  transform: translateZ(0) scale(0.97);
+}

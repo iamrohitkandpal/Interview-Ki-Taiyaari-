@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 /**
- * PromptShield Global Store
+ * Bhisma Global Store
  * Uses Zustand with persist middleware for localStorage persistence
  * Data survives page refresh and browser closing
  */
@@ -88,6 +88,26 @@ const useStore = create(
             getModelById: (id) => get().models.find((m) => m.id === id),
             getResultById: (id) => get().testResults.find((r) => r.id === id),
 
+            // ============================================
+            // TOAST NOTIFICATIONS (Not Persisted)
+            // ============================================
+            toasts: [],
+            addToast: (message, type = 'info', duration = 4000) => {
+                const id = Date.now().toString() + Math.random().toString(36).slice(2);
+                set((state) => ({
+                    toasts: [...state.toasts, { id, message, type }]
+                }));
+                // Auto-dismiss
+                setTimeout(() => {
+                    set((state) => ({
+                        toasts: state.toasts.filter((t) => t.id !== id)
+                    }));
+                }, duration);
+            },
+            removeToast: (id) => set((state) => ({
+                toasts: state.toasts.filter((t) => t.id !== id)
+            })),
+
             // Clear all persisted data
             clearAllData: () => set({
                 models: [],
@@ -97,7 +117,7 @@ const useStore = create(
             }),
         }),
         {
-            name: 'promptshield-storage', // localStorage key
+            name: 'bhisma-storage', // localStorage key
             storage: createJSONStorage(() => localStorage),
             // Only persist these fields
             partialize: (state) => ({

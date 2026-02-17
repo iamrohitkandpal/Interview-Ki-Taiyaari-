@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.PROD
-    ? 'https://api.example.com'
-    : 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL
+    || (import.meta.env.PROD ? '' : 'http://localhost:3001');
 
 const api = axios.create({
     baseURL: API_BASE,
@@ -28,6 +27,7 @@ export const attacksAPI = {
 
 export const testsAPI = {
     run: (data) => api.post('/tests/run', data),
+    autoScan: (data) => api.post('/tests/auto-scan', data),
     getAll: () => api.get('/tests'),
     getById: (id) => api.get(`/tests/${id}`),
 }

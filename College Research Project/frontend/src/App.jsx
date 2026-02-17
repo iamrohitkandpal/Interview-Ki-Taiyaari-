@@ -8,6 +8,7 @@ import TestPage from "./components/TestPage";
 import ResultsPage from "./components/ResultsPage";
 import DefensesPage from "./components/DefensesPage";
 import ComparePage from "./components/ComparePage";
+import ToastContainer from "./components/Toast";
 import './index.css';
 
 const tabs = [
@@ -39,6 +40,9 @@ function App() {
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--color-bg-dark)' }}>
+      {/* Toast Notifications */}
+      <ToastContainer />
+
       {/* Animated Background */}
       <div className="bg-orb bg-orb-1" aria-hidden="true"></div>
       <div className="bg-orb bg-orb-2" aria-hidden="true"></div>
@@ -56,7 +60,7 @@ function App() {
           </div>
           {sidebarOpen && (
             <div className="overflow-hidden">
-              <h1 className="text-lg font-bold text-white tracking-tight">PromptShield</h1>
+              <h1 className="text-lg font-bold text-white tracking-tight">Bhisma</h1>
               <p className="text-xs text-slate-500">Security Platform</p>
             </div>
           )}
@@ -83,8 +87,8 @@ function App() {
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={sidebarOpen ? undefined : tab.label}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                        ? `bg-gradient-to-r ${colorStyles[tab.color]} border`
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      ? `bg-gradient-to-r ${colorStyles[tab.color]} border`
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                   >
                     <Icon className={`w-5 h-5 ${isActive ? colorStyles[tab.color].split(' ').pop() : ''}`} aria-hidden="true" />
