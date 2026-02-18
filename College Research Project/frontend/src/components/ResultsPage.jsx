@@ -1,19 +1,26 @@
+
 import { useState } from 'react';
-import { FileText, Trash2, Eye, ChevronDown, ChevronUp, Copy, Check, AlertTriangle, Shield, Download, FileJson, Printer } from 'lucide-react';
+import { FileText, Trash2, Eye, ChevronDown, ChevronUp, Copy, Check, AlertTriangle, Shield, Download, FileJson, Printer, Search, Filter } from 'lucide-react';
 import useStore from '../store/useStore';
 import { exportAsJSON, exportAsPDF, exportAllAsJSON, copyToClipboard as copyReport } from '../services/reportService';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
+import { getRiskColor, getRiskBadgeVariant, getRiskLabel } from '../utils/styles';
 
 function ResultsPage() {
-  const { testResults, setTestResults } = useStore();
+  const { testResults, setTestResults, addToast } = useStore();
   const [selectedResult, setSelectedResult] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all'); // all, failed, passed
   const [expandedRows, setExpandedRows] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const deleteResult = (id) => {
-    if (confirm('Delete this test result?')) {
-      setTestResults(testResults.filter(t => t.id !== id));
-      if (selectedResult?.id === id) setSelectedResult(null);
-    }
+    setTestResults(testResults.filter(t => t.id !== id));
+    if (selectedResult?.id === id) setSelectedResult(null);
+    addToast('Test result deleted', 'success');
+    setDeleteConfirmId(null);
   };
 
   const toggleRow = (idx) => {
@@ -26,265 +33,265 @@ function ResultsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const expandAll = () => {
-    if (selectedResult?.results) {
-      const allExpanded = {};
-      selectedResult.results.forEach((_, idx) => { allExpanded[idx] = true; });
-      setExpandedRows(allExpanded);
-    }
-  };
-
-  const collapseAll = () => {
-    setExpandedRows({});
-  };
+  // Filter logic for the details view
+  const filteredDetails = selectedResult?.results?.filter(r => {
+    const matchesSearch = r.prompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.response.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterType === 'all'
+      ? true
+      : filterType === 'failed' ? r.vulnerable : !r.vulnerable;
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="relative flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Test Results</h1>
-          <p className="text-slate-400 mt-1">View detailed attack prompts and model responses</p>
+          <h1 className="text-4xl font-bold">
+            <span className="gradient-text">Test Registry</span>
+          </h1>
+          <p className="text-slate-400 mt-2 text-lg">Detailed audit logs of all security assessments</p>
         </div>
         {testResults.length > 0 && (
           <button
             onClick={() => exportAllAsJSON(testResults)}
-            className="glass-button flex items-center gap-2 px-4 py-2 text-sm rounded-lg"
-            aria-label="Export all results as JSON"
+            className="group flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-all"
+            aria-label="Export all results"
           >
-            <Download className="w-4 h-4" aria-hidden="true" />
-            Export All
+            <Download className="w-4 h-4 text-slate-400 group-hover:text-white" />
+            <span className="text-sm text-slate-300 group-hover:text-white">Batch Export</span>
           </button>
         )}
-        <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl" aria-hidden="true"></div>
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl opacity-50" aria-hidden="true"></div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Results List */}
-        <div className="lg:col-span-1 space-y-3">
-          {testResults.length === 0 ? (
-            <div className="glass-panel p-8 text-center">
-              <FileText className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-              <p className="text-slate-400">No test results yet</p>
-              <p className="text-slate-500 text-sm mt-1">Run some tests to see results here</p>
+      <div className="grid lg:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
+        {/* Results List Sidebar (4 cols) */}
+        <div className="lg:col-span-4 flex flex-col gap-4 h-full">
+          <Card variant="solid" className="p-4 flex-shrink-0">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">History</h2>
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search history..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
             </div>
-          ) : (
-            testResults.map((result) => (
-              <div
-                key={result.id}
-                onClick={() => { setSelectedResult(result); setExpandedRows({}); }}
-                className={`glass-card p-4 cursor-pointer ${selectedResult?.id === result.id
-                  ? 'bg-indigo-500/20 border-indigo-500'
-                  : ''
-                  }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{result.modelName}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteResult(result.id); }}
-                    className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-sm">{result.totalAttacks} attacks</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${result.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
-                    result.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
-                      result.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-green-500/20 text-green-400'
-                    }`}>
-                    {result.riskScore}% Risk
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
+          </Card>
+
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+            {testResults.length === 0 ? (
+              <Card variant="glass" className="p-8 text-center flex flex-col items-center justify-center h-40">
+                <FileText className="w-10 h-10 text-slate-600 mb-2" />
+                <p className="text-slate-500 text-sm">No test records found</p>
+              </Card>
+            ) : (
+              testResults.map((result) => (
+                <Card
+                  key={result.id}
+                  variant={selectedResult?.id === result.id ? 'neon' : 'glass'}
+                  className={`p-4 cursor-pointer group transition-all duration-200 ${selectedResult?.id === result.id ? 'border-l-4 border-l-indigo-500' : 'hover:bg-white/5'
+                    }`}
+                  onClick={() => { setSelectedResult(result); setExpandedRows({}); setSearchTerm(''); }}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className={`font-semibold ${selectedResult?.id === result.id ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                      {result.modelName}
+                    </h3>
+                    {deleteConfirmId === result.id ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteResult(result.id); }}
+                        onBlur={() => setDeleteConfirmId(null)}
+                        className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium transition-all animate-pulse"
+                        autoFocus
+                      >
+                        Sure?
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(result.id); }}
+                        className="text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-slate-500 font-mono">
+                      {new Date(result.createdAt || Date.now()).toLocaleDateString()}
+                    </span>
+                    <Badge variant={getRiskBadgeVariant(result.riskScore)}>
+                      {result.riskScore}% Risk
+                    </Badge>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
 
-        {/* Result Details */}
-        <div className="lg:col-span-2">
+        {/* Detail View (8 cols) */}
+        <div className="lg:col-span-8 h-full flex flex-col">
           {selectedResult ? (
-            <div className="glass-panel p-6 space-y-6">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">{selectedResult.modelName}</h2>
-                  <p className="text-slate-400 text-sm">{selectedResult.provider} • {new Date(selectedResult.timestamp || selectedResult.createdAt).toLocaleString()}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => exportAsJSON(selectedResult)}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-                    title="Export as JSON"
-                    aria-label="Export as JSON"
-                  >
-                    <FileJson className="w-5 h-5" aria-hidden="true" />
-                  </button>
-                  <button
-                    onClick={() => exportAsPDF(selectedResult)}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-                    title="Export as PDF"
-                    aria-label="Export as PDF"
-                  >
-                    <Printer className="w-5 h-5" aria-hidden="true" />
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await copyReport(selectedResult);
-                      setCopiedId('summary');
-                      setTimeout(() => setCopiedId(null), 2000);
-                    }}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-                    title="Copy summary to clipboard"
-                    aria-label="Copy summary to clipboard"
-                  >
-                    {copiedId === 'summary' ? (
-                      <Check className="w-5 h-5 text-green-400" aria-hidden="true" />
-                    ) : (
-                      <Copy className="w-5 h-5" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-                <span className={`px-4 py-2 rounded-xl text-sm font-semibold ${selectedResult.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400 glow-red' :
-                  selectedResult.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-400' :
-                    selectedResult.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-green-500/20 text-green-400 glow-green'
-                  }`}>
-                  {selectedResult.riskLevel}
-                </span>
-              </div>
+            <Card variant="glass" className="h-full flex flex-col border-0 p-0 overflow-hidden bg-slate-900/50 backdrop-blur-xl">
+              {/* Detail Header */}
+              <div className="p-6 border-b border-white/10 bg-white/5 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                      {selectedResult.modelName}
+                      <Badge variant={getRiskBadgeVariant(selectedResult.riskScore)} className="text-sm px-3 py-1">
+                        {getRiskLabel(selectedResult.riskScore)}
+                      </Badge>
+                    </h2>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        <Shield className="w-4 h-4 text-slate-500" />
+                        {selectedResult.totalAttacks} Vectors Tested
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-rose-400" />
+                        {selectedResult.failed} Vulnerabilities
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-4 gap-4">
-                <Stat label="Risk Score" value={`${selectedResult.riskScore}%`} />
-                <Stat label="Total" value={selectedResult.totalAttacks} />
-                <Stat label="Passed" value={selectedResult.passed} color="text-green-400" icon={Shield} />
-                <Stat label="Failed" value={selectedResult.failed} color="text-red-400" icon={AlertTriangle} />
-              </div>
-
-              {/* Expand/Collapse Buttons */}
-              <div className="flex items-center justify-between border-t border-slate-700 pt-4">
-                <h3 className="text-white font-medium">Attack Details</h3>
-                <div className="flex gap-2">
-                  <button onClick={expandAll} className="text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1 rounded-lg bg-indigo-500/10">
-                    Expand All
-                  </button>
-                  <button onClick={collapseAll} className="text-xs text-slate-400 hover:text-slate-300 px-3 py-1 rounded-lg bg-slate-700/50">
-                    Collapse All
-                  </button>
-                </div>
-              </div>
-
-              {/* Results with Expandable Rows */}
-              <div className="space-y-3 max-h-[500px] overflow-auto pr-2">
-                {selectedResult.results?.map((r, idx) => (
-                  <div key={idx} className="glass-card overflow-hidden">
-                    {/* Row Header - Clickable */}
-                    <div
-                      onClick={() => toggleRow(idx)}
-                      className="p-4 cursor-pointer flex items-center justify-between hover:bg-slate-700/30 transition-colors"
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      title="Print Report"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-2 h-2 rounded-full ${r.vulnerable ? 'bg-red-500' : 'bg-green-500'}`}></span>
-                        <div>
-                          <p className="text-white font-medium">{r.attackName}</p>
-                          <p className="text-slate-400 text-sm">{r.category} • {r.severity}</p>
+                      <Printer className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => exportAsJSON(selectedResult)}
+                      className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      title="Export JSON"
+                    >
+                      <FileJson className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search prompt or response..."
+                      className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="all">All Results</option>
+                    <option value="failed">Vulnerable Only</option>
+                    <option value="passed">Safe Only</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Detail Content (Scrollable) */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                {filteredDetails?.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-xl border transition-all duration-200 overflow-hidden ${item.vulnerable
+                      ? 'bg-rose-500/5 border-rose-500/20'
+                      : 'bg-emerald-500/5 border-emerald-500/20'
+                      }`}
+                  >
+                    <div
+                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5"
+                      onClick={() => toggleRow(idx)}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className={`p-1.5 rounded-full ${item.vulnerable ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+                          }`}>
+                          {item.vulnerable ? <AlertTriangle className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-200 truncate pr-4">{item.prompt.substring(0, 60)}...</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                              {item.category}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${r.vulnerable ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                          }`}>
-                          {r.vulnerable ? 'VULNERABLE' : 'SAFE'}
-                        </span>
-                        <span className="text-slate-400 text-sm">{r.confidence}%</span>
-                        {expandedRows[idx] ? (
-                          <ChevronUp className="w-5 h-5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
+                      {expandedRows[idx] ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                     </div>
 
-                    {/* Expanded Content - Prompt & Response */}
                     {expandedRows[idx] && (
-                      <div className="border-t border-slate-700 p-4 space-y-4 bg-slate-800/30">
-                        {/* Attack Prompt */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-slate-500 uppercase font-medium">Attack Prompt</span>
-                            <button
-                              onClick={() => copyToClipboard(r.prompt, `prompt-${idx}`)}
-                              className="text-slate-400 hover:text-white p-1 rounded transition-colors"
-                            >
-                              {copiedId === `prompt-${idx}` ? (
-                                <Check className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
+                      <div className="px-4 pb-4 border-t border-white/5 bg-black/20">
+                        <div className="grid gap-4 pt-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Attack Prompt</label>
+                              <button
+                                onClick={() => copyToClipboard(item.prompt, `p-${idx}`)}
+                                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                              >
+                                {copiedId === `p-${idx}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                Copy
+                              </button>
+                            </div>
+                            <div className="bg-slate-900 rounded p-3 text-sm text-slate-300 font-mono border border-white/10 whitespace-pre-wrap">
+                              {item.prompt}
+                            </div>
                           </div>
-                          <pre className="text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-48 border border-slate-700">
-                            {r.prompt || 'Prompt not available'}
-                          </pre>
-                        </div>
 
-                        {/* Model Response */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-slate-500 uppercase font-medium">Model Response</span>
-                            <button
-                              onClick={() => copyToClipboard(r.response, `response-${idx}`)}
-                              className="text-slate-400 hover:text-white p-1 rounded transition-colors"
-                            >
-                              {copiedId === `response-${idx}` ? (
-                                <Check className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Model Response</label>
+                              <button
+                                onClick={() => copyToClipboard(item.response, `r-${idx}`)}
+                                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                              >
+                                {copiedId === `r-${idx}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                Copy
+                              </button>
+                            </div>
+                            <div className={`bg-slate-900 rounded p-3 text-sm font-mono border border-white/10 whitespace-pre-wrap ${item.vulnerable ? 'text-rose-200/90' : 'text-emerald-200/90'
+                              }`}>
+                              {item.response}
+                            </div>
                           </div>
-                          <pre className={`text-sm p-4 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-64 border ${r.vulnerable
-                            ? 'bg-red-500/5 border-red-500/30 text-red-200'
-                            : 'bg-green-500/5 border-green-500/30 text-green-200'
-                            }`}>
-                            {r.response || 'Response not available'}
-                          </pre>
                         </div>
-
-                        {/* Analysis Reason */}
-                        {r.reason && (
-                          <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-700/30">
-                            <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-slate-300">{r.reason}</p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
                 ))}
+
+                {filteredDetails?.length === 0 && (
+                  <div className="text-center py-10 opacity-50">
+                    <Search className="w-8 h-8 mx-auto mb-2" />
+                    <p>No results match your filter</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </Card>
           ) : (
-            <div className="glass-panel p-12 text-center">
-              <Eye className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-              <p className="text-slate-400">Select a test result to view details</p>
-              <p className="text-slate-500 text-sm mt-1">Click on any result to see prompts and responses</p>
-            </div>
+            <Card variant="glass" className="h-full flex flex-col items-center justify-center text-center opacity-50 border-dashed">
+              <FileText className="w-16 h-16 text-slate-700 mb-4" />
+              <h3 className="text-xl font-semibold text-slate-400">Select a Test Record</h3>
+              <p className="text-slate-500 max-w-xs mx-auto mt-2">
+                Choose a test from the history sidebar to view detailed audit logs.
+              </p>
+            </Card>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, color = 'text-white', icon: Icon }) {
-  return (
-    <div className="stat-card p-4 text-center">
-      <div className="flex items-center justify-center gap-2">
-        {Icon && <Icon className={`w-5 h-5 ${color}`} />}
-        <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      </div>
-      <p className="text-slate-400 text-sm mt-1">{label}</p>
     </div>
   );
 }
