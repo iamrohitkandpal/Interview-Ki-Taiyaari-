@@ -152,80 +152,132 @@ Content to analyze:
   }
 ];
 
-let activeDefences = new Map();
-
 router.get('/', (req, res) => {
-    res.json(defencesLibrary);
+  try {
+    return res.json(defencesLibrary);
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to fetch defences', error.message));
+  }
 });
 
 router.get('/:id', (req, res) => {
-    const defence = defencesLibrary.find(d => d.id === req.params.id);
-
-    if (!defence) {
-        return res.status(404).json({ message: 'Defence not found' });
+  try {
+    const id = normalizeString(req.params.id);
+    if (!id) {
+      return res.status(400).json(errorPayload('Defence id is required'));
     }
 
-    res.json(defence);
+    const defence = defencesLibrary.find((item) => item.id === id);
+
+    if (!defence) {
+      return res.status(404).json(errorPayload('Defence not found'));
+    }
+
+    return res.json(defence);
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to fetch defence', error.message));
+  }
 });
 
 router.post('/apply', (req, res) => {
-    const { prompt, defenceIds } = req.body;
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { prompt, defenceIds } = body;
 
-    if (!prompt) {
-        return res.status(400).json({ message: 'Prompt is required' });
+    if (!isNonEmptyString(prompt)) {
+      return res.status(400).json(errorPayload('Prompt is required'));
+    }
+
+    if (defenceIds !== undefined && !Array.isArray(defenceIds)) {
+      return res.status(400).json(errorPayload('defenceIds must be an array when provided'));
     }
 
     let modifiedPrompt = prompt;
     const appliedDefences = [];
 
-    for (const defId of (defenceIds || [])) {
-        const defence = defencesLibrary.find(d => d.id === defId);
+    for (const rawDefenceId of (defenceIds || [])) {
+      const defId = normalizeString(rawDefenceId);
+      if (!defId) {
+        continue;
+      }
 
-        if (!defence) {
-            continue;
-        }
+      const defence = defencesLibrary.find((item) => item.id === defId);
+      if (!defence) {
+        continue;
+      }
 
-        if (defence.category === 'filter' && defence.patterns) {
-            for (const pattern of defence.patterns) {
-                const regex = new RegExp(pattern.match, pattern.flags || 'gi');
-                modifiedPrompt = modifiedPrompt.replace(regex, pattern.replace);
-            }
-            appliedDefences.push({ id: defence.id, name: defence.name, actions: 'sanitized' });
+      if (defence.category === 'filter' && Array.isArray(defence.patterns)) {
+        for (const pattern of defence.patterns) {
+          const regex = new RegExp(pattern.match, pattern.flags || 'gi');
+          modifiedPrompt = modifiedPrompt.replace(regex, pattern.replace);
         }
-        else if (defence.category === 'prompt' && defence.template) {
-            modifiedPrompt = defence.template.replace('{USER_INPUT}', modifiedPrompt);
-            appliedDefences.push({ id: defence.id, name: defence.name, action: 'wrapped' });
-        }
+        appliedDefences.push({ id: defence.id, name: defence.name, actions: 'sanitized' });
+      } else if (defence.category === 'prompt' && isNonEmptyString(defence.template)) {
+        modifiedPrompt = defence.template.replace('{USER_INPUT}', modifiedPrompt);
+        appliedDefences.push({ id: defence.id, name: defence.name, action: 'wrapped' });
+      }
     }
 
-    res.json({
-        original: prompt,
-        modified: modifiedPrompt,
-        appliedDefences,
-        blocked: modifiedPrompt.includes('[BLOCKED]')
+    return res.json({
+      original: prompt,
+      modified: modifiedPrompt,
+      appliedDefences,
+      blocked: modifiedPrompt.includes('[BLOCKED]')
     });
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to apply defences', error.message));
+  }
 });
 
 
 router.post('/scan-output', (req, res) => {
-    const { response, defenceIds } = req.body;
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { response } = body;
 
-    if (!response) {
-        return res.status(400).json({ message: 'Response is required' });
+    if (!isNonEmptyString(response)) {
+      return res.status(400).json(errorPayload('Response is required'));
     }
 
-    const outputDefence = defencesLibrary.find(d => d.id === 'def-003');
+    const outputDefence = defencesLibrary.find((item) => item.id === 'def-003');
+    if (!outputDefence || !Array.isArray(outputDefence.redFlags)) {
+      return res.status(500).json(errorPayload('Output leak defence is not configured'));
+    }
+
     const responseLower = response.toLowerCase();
+    const leaksFound = outputDefence.redFlags.filter((flag) => responseLower.includes(flag.toLowerCase()));
 
-    const leaksFound = outputDefence.redFlags.filter(flag => responseLower.includes(flag.toLowerCase()));
-
-    res.json({
-        safe: leaksFound.length === 0,
-        leaksFound,
-        recommendation: leaksFound.length > 0
-            ? 'Response contains potentially sensitive information'
-            : 'No sensitive information detected'
+    return res.json({
+      safe: leaksFound.length === 0,
+      leaksFound,
+      recommendation: leaksFound.length > 0
+        ? 'Response contains potentially sensitive information'
+        : 'No sensitive information detected'
     });
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to scan output', error.message));
+  }
 });
+
+function errorPayload(message, details) {
+  const payload = {
+    error: message,
+    message,
+  };
+
+  if (isNonEmptyString(details)) {
+    payload.details = details;
+  }
+
+  return payload;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeString(value) {
+  return isNonEmptyString(value) ? value.trim() : '';
+}
 
 export default router;

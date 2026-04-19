@@ -65,8 +65,26 @@ app.use('/tests/auto-scan', testLimiter);
 // ============================================
 // CORS Configuration
 // ============================================
+const configuredOrigins = parseAllowedOrigins(process.env.CORS_ORIGIN);
+const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins;
+
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'http://localhost:3000'],
+    origin: (origin, callback) => {
+        // Allow non-browser clients (curl/postman/tests without Origin header)
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        const isConfiguredOrigin = allowedOrigins.includes(origin);
+        const isLocalDevOrigin = process.env.NODE_ENV !== 'production' && isLoopbackOrigin(origin);
+
+        if (isConfiguredOrigin || isLocalDevOrigin) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -77,6 +95,25 @@ app.use(cors(corsOptions));
 // Body parser with size limits (prevents payload attacks)
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// Handle malformed JSON and body parse failures consistently
+app.use((err, req, res, next) => {
+    if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+        return res.status(400).json({
+            error: 'Invalid JSON payload',
+            message: 'Request body contains malformed JSON',
+        });
+    }
+
+    if (err && err.type === 'entity.too.large') {
+        return res.status(413).json({
+            error: 'Payload too large',
+            message: 'Request body exceeds the allowed size limit',
+        });
+    }
+
+    return next(err);
+});
 
 // ============================================
 // REQUEST LOGGING (Security Audit Trail)
@@ -141,11 +178,35 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
-// SERVER STARTUP
+// SERVER STARTUP (only when run directly)
 // ============================================
-app.listen(PORT, () => {
-    console.log(`\n🛡️  Bhisma API running on port ${PORT}`);
-    console.log(`📍 Endpoints: /models, /attacks, /tests, /defenses, /compare`);
-    console.log(`🔒 Security: Helmet ✓ | Rate Limiting ✓ | CORS ✓`);
-    console.log(`\n`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`\n🛡️  Bhisma API running on port ${PORT}`);
+        console.log(`📍 Endpoints: /models, /attacks, /tests, /defenses, /compare`);
+        console.log(`🔒 Security: Helmet ✓ | Rate Limiting ✓ | CORS ✓`);
+        console.log(`\n`);
+    });
+}
+
+export default app;
+
+function parseAllowedOrigins(value) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        return [];
+    }
+
+    return value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+}
+
+function isLoopbackOrigin(origin) {
+    try {
+        const parsed = new URL(origin);
+        return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+    } catch {
+        return false;
+    }
+}

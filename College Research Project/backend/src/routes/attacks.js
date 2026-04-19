@@ -1,5 +1,6 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { stmts } from '../db.js';
 
 const router = express.Router();
 
@@ -686,80 +687,119 @@ const attackLibrary = [
   },
 ];
 
-let customAttacks = [];
-
 router.get('/', (req, res) => {
-  const { category } = req.query;
-  let allAttacks = [...attackLibrary, ...customAttacks];
+  try {
+    const category = normalizeString(req.query?.category);
+    const customAttacks = stmts.customAttacks.getAll.all();
+    let allAttacks = [...attackLibrary, ...customAttacks];
 
-  if (category) {
-    allAttacks = allAttacks.filter(attack => attack.category === category);
+    if (category) {
+      allAttacks = allAttacks.filter((attack) => attack.category === category);
+    }
+
+    return res.json(allAttacks);
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to fetch attacks', error.message));
   }
-
-  res.json(allAttacks);
 });
 
 router.get('/categories', (req, res) => {
-  const allAttacks = [...attackLibrary, ...customAttacks];
+  try {
+    const customAttacks = stmts.customAttacks.getAll.all();
+    const allAttacks = [...attackLibrary, ...customAttacks];
 
-  const categories = [
-    { id: 'prompt_injection', name: 'Prompt Injection', icon: '💉', count: allAttacks.filter(a => a.category === 'prompt_injection').length },
-    { id: 'jailbreak', name: 'Jailbreak', icon: '🔓', count: allAttacks.filter(a => a.category === 'jailbreak').length },
-    { id: 'data_extraction', name: 'Data Extraction', icon: '📤', count: allAttacks.filter(a => a.category === 'data_extraction').length },
-    { id: 'harmful_content', name: 'Harmful Content', icon: '⚠️', count: allAttacks.filter(a => a.category === 'harmful_content').length },
-    { id: 'context_override', name: 'Context Override', icon: '🎭', count: allAttacks.filter(a => a.category === 'context_override').length },
-    { id: 'context_boundary', name: 'Context Boundary', icon: '🚧', count: allAttacks.filter(a => a.category === 'context_boundary').length },
-    { id: 'multimodal', name: 'Multimodal', icon: '🖼️', count: allAttacks.filter(a => a.category === 'multimodal').length }
-  ];
+    const categories = [
+      { id: 'prompt_injection', name: 'Prompt Injection', icon: '💉', count: allAttacks.filter((attack) => attack.category === 'prompt_injection').length },
+      { id: 'jailbreak', name: 'Jailbreak', icon: '🔓', count: allAttacks.filter((attack) => attack.category === 'jailbreak').length },
+      { id: 'data_extraction', name: 'Data Extraction', icon: '📤', count: allAttacks.filter((attack) => attack.category === 'data_extraction').length },
+      { id: 'harmful_content', name: 'Harmful Content', icon: '⚠️', count: allAttacks.filter((attack) => attack.category === 'harmful_content').length },
+      { id: 'context_override', name: 'Context Override', icon: '🎭', count: allAttacks.filter((attack) => attack.category === 'context_override').length },
+      { id: 'context_boundary', name: 'Context Boundary', icon: '🚧', count: allAttacks.filter((attack) => attack.category === 'context_boundary').length },
+      { id: 'multimodal', name: 'Multimodal', icon: '🖼️', count: allAttacks.filter((attack) => attack.category === 'multimodal').length }
+    ];
 
-  res.json({
-    categories,
-    totalAttacks: allAttacks.length,
-    libraryAttacks: attackLibrary.length,
-    customAttacks: customAttacks.length
-  });
+    return res.json({
+      categories,
+      totalAttacks: allAttacks.length,
+      libraryAttacks: attackLibrary.length,
+      customAttacks: customAttacks.length
+    });
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to fetch attack categories', error.message));
+  }
 });
 
 router.get('/:id', (req, res) => {
-  const attack = [...attackLibrary, ...customAttacks].find(a => a.id === req.params.id);
+  try {
+    const id = normalizeString(req.params.id);
+    if (!id) {
+      return res.status(400).json(errorPayload('Attack id is required'));
+    }
 
-  if (!attack) {
-    return res.status(404).json({ error: 'Attack not found' });
+    const customAttacks = stmts.customAttacks.getAll.all();
+    const attack = [...attackLibrary, ...customAttacks].find((item) => item.id === id);
+
+    if (!attack) {
+      return res.status(404).json(errorPayload('Attack not found'));
+    }
+
+    return res.json(attack);
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to fetch attack', error.message));
   }
-
-  res.json(attack);
 });
 
 router.post('/', (req, res) => {
-  const { name, category, severity, description, prompt } = req.body;
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { name, category, severity, description, prompt } = body;
 
-  if (!name || !prompt) {
-    return res.status(400).json({ error: 'Name and prompt are required' });
+    if (!isNonEmptyString(name) || !isNonEmptyString(prompt)) {
+      return res.status(400).json(errorPayload('Name and prompt are required'));
+    }
+
+    const normalizedSeverity = normalizeSeverity(severity);
+
+    const newAttack = {
+      id: `custom-${uuidv4().slice(0, 8)}`,
+      name: name.trim(),
+      category: isNonEmptyString(category) ? category.trim() : 'custom',
+      severity: normalizedSeverity,
+      description: isNonEmptyString(description) ? description.trim() : '',
+      prompt: prompt.trim(),
+      source: 'custom',
+      autoScan: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    stmts.customAttacks.insert.run(newAttack);
+    return res.status(201).json({ ...newAttack, isCustom: true, source: 'custom' });
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to create custom attack', error.message));
   }
-
-  const newAttack = {
-    id: `custom-${uuidv4().slice(0, 8)}`,
-    name,
-    category: category || 'custom',
-    severity: severity || 'low',
-    description: description || '',
-    prompt,
-    isCustom: true,
-    createdAt: new Date().toISOString()
-  };
-
-  customAttacks.push(newAttack);
-  res.status(201).json(newAttack);
 });
 
 router.delete('/:id', (req, res) => {
-  if (!req.params.id.startsWith('custom-')) {
-    return res.status(400).json({ error: 'Cannot delete library attacks' });
-  }
+  try {
+    const id = normalizeString(req.params.id);
+    if (!id) {
+      return res.status(400).json(errorPayload('Attack id is required'));
+    }
 
-  customAttacks = customAttacks.filter(a => a.id !== req.params.id);
-  res.json({ success: true, message: 'Attack deleted successfully' });
-})
+    if (!id.startsWith('custom-')) {
+      return res.status(400).json(errorPayload('Cannot delete library attacks'));
+    }
+
+    const result = stmts.customAttacks.delete.run(id);
+    if (!result || result.changes === 0) {
+      return res.status(404).json(errorPayload('Attack not found'));
+    }
+
+    return res.json({ success: true, message: 'Attack deleted successfully' });
+  } catch (error) {
+    return res.status(500).json(errorPayload('Failed to delete attack', error.message));
+  }
+});
 
 // ============================================
 // AUTO-SCAN HELPER
@@ -767,6 +807,36 @@ router.delete('/:id', (req, res) => {
 // ============================================
 export function getAutoScanAttacks() {
   return attackLibrary.filter(a => a.autoScan === true);
+}
+
+function errorPayload(message, details) {
+  const payload = {
+    error: message,
+    message,
+  };
+
+  if (isNonEmptyString(details)) {
+    payload.details = details;
+  }
+
+  return payload;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeString(value) {
+  return isNonEmptyString(value) ? value.trim() : '';
+}
+
+function normalizeSeverity(value) {
+  const severity = normalizeString(value).toLowerCase();
+  if (['critical', 'high', 'medium', 'low'].includes(severity)) {
+    return severity;
+  }
+
+  return 'low';
 }
 
 export default router;
