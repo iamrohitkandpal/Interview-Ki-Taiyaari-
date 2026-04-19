@@ -1,330 +1,183 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/status-research%20%26%20testing-yellow?style=for-the-badge" alt="Status: Research & Testing" />
-  <img src="https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-blue?style=for-the-badge" alt="OWASP LLM Top 10" />
-  <img src="https://img.shields.io/badge/WCAG-2.1%20AA-green?style=for-the-badge" alt="WCAG 2.1 AA" />
-  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License: MIT" />
-</p>
+# Bhisma
 
-<h1 align="center">🛡️ Bhisma</h1>
+Bhisma is a full-stack LLM security testing platform for running prompt-security assessments, reviewing risk outcomes, trying defense transformations, and comparing model runs.
 
-<p align="center">
-  <strong>An Open-Source LLM Security Testing & Red-Teaming Platform</strong>
-</p>
+## What is implemented
 
-<p align="center">
-  <em>Helping developers, researchers, and security professionals identify vulnerabilities in Large Language Model applications before attackers do.</em>
-</p>
+- Frontend: React + Vite dashboard with pages for Models, Attacks, Defenses, Test, Results, and Compare.
+- Backend: Express API with SQLite persistence for models, tests, comparisons, and custom attacks.
+- Security middleware: Helmet, rate limiting, CORS, JSON/body-size guards.
+- Report tooling: JSON export, print/PDF view support, clipboard copy helpers.
 
----
+## Repository structure
 
-## 🚨 Project Status
+- `frontend/` – React app
+- `backend/` – Express API
 
-> **⚠️ This project is currently in active research and development phase.**  
-> We are continuously adding new attack vectors, refining detection mechanisms, and validating our methodology against real-world LLM deployments. Contributions and feedback from the security research community are welcome.
+## Prerequisites
 
----
+- Node.js 18+
+- npm 9+
 
-## 🎯 The Problem We're Solving
+## Setup
 
-Large Language Models (LLMs) are being deployed at unprecedented scale — from customer service chatbots to autonomous agents with access to databases, APIs, and file systems. Yet, **most LLM applications are deployed without systematic security testing**.
-
-The consequences are real:
-- **Prompt Injection** attacks can override system instructions and exfiltrate sensitive data
-- **Jailbreaks** can bypass safety guardrails and generate harmful content
-- **Data Leakage** can expose system prompts, API keys, and confidential information
-- **Agentic Risks** can lead to unauthorized actions with real-world impact
-
-Bhisma addresses this gap by providing a **structured, research-backed platform** for testing LLM security.
-
----
-
-## ✨ Key Features
-
-### 🎯 Attack Simulation Engine
-- **52+ Pre-built Attack Vectors** across 7 OWASP-aligned categories
-- MITRE ATLAS mapping for enterprise alignment
-- Support for custom attack creation and batch testing
-- Real-time execution with detailed logging
-
-### 🛡️ Defense Testing Sandbox
-- **8 Research-backed Defense Mechanisms** including:
-  - OWASP-recommended prompt hardening
-  - Input sanitization filters
-  - Output leak detection
-  - Spotlighting (delimiter-based isolation)
-- Before/after comparison of attack effectiveness
-
-### 📊 Risk Assessment & Reporting
-- Weighted severity scoring (Critical → Low)
-- Confidence-based vulnerability detection
-- **Export reports as JSON or PDF**
-- Copy results to clipboard
-
-### 🔄 Advanced Model Comparison
-- Side-by-side security comparison of two models
-- **Research Reliability Metrics** (warns if sample size N < 5)
-- **Statistical Validity Checks** (flags skewed attack vector counts)
-- Visual risk difference indicators & category breakdown
-
-### 🧪 Research Lab Design
-- **Defense Console:** Terminal-style interface for white-box testing
-- **Audit Registry:** Detailed logging with JSON/PDF export for reproducibility
-- **Neumorphic UI:** High-density data visualization for security professionals
-
-### 🔐 Security & Compliance
-- **OWASP 2025 Security Standards**
-  - Helmet.js for security headers
-  - Rate limiting (DDoS protection)
-  - CORS with whitelist
-  - Secure error handling
-- **WCAG 2.1 AA Accessibility**
-  - ARIA labels on all interactive elements
-  - Keyboard navigation support
-  - Screen reader optimized
-  - Reduced motion support
-
-### 💾 Data Persistence
-- **LocalStorage persistence** via Zustand middleware
-- Models, attacks, and results survive page refresh
-- No data loss on browser close
-
-### 🔌 Multi-Provider LLM Support
-- Groq (Llama 3, Mixtral)
-- OpenAI (GPT-4, GPT-3.5)
-- Ollama (Local/Self-hosted models)
-
----
-
-## 🔬 Research Foundation
-
-This project is grounded in cutting-edge AI security research. Our attack taxonomy and defense mechanisms are derived from:
-
-### Primary References
-
-| Source | Description | Year |
-|--------|-------------|------|
-| [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) | Industry-standard vulnerability classification for LLM systems | 2025 |
-| [MITRE ATLAS](https://atlas.mitre.org/) | Adversarial Threat Landscape for AI Systems | 2024 |
-| [Anthropic: Many-Shot Jailbreaking](https://www.anthropic.com/research/many-shot-jailbreaking) | Research on in-context learning exploitation | 2024 |
-| [Microsoft: Crescendo Attack](https://www.microsoft.com/en-us/security/blog/) | Multi-turn manipulation techniques | 2024 |
-| [arXiv: Universal Adversarial Triggers](https://arxiv.org/) | Token-level adversarial attacks on LLMs | 2023 |
-
----
-
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                           Bhisma                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
-│  │   Frontend   │◄──►│   Backend    │◄──►│  LLM APIs    │       │
-│  │  (React.js)  │    │  (Express)   │    │ (Groq/OpenAI)│       │
-│  └──────────────┘    └──────────────┘    └──────────────┘       │
-│         │                   │                                    │
-│         ▼                   ▼                                    │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
-│  │   Zustand    │    │   Attack     │    │   Security   │       │
-│  │  + Persist   │    │   Library    │    │  Middleware  │       │
-│  │ (localStorage)│    │  (52+ atks) │    │  (Helmet)    │       │
-│  └──────────────┘    └──────────────┘    └──────────────┘       │
-│                             │                                    │
-│                             ▼                                    │
-│                      ┌──────────────┐                           │
-│                      │  Risk Score  │                           │
-│                      │   Engine     │                           │
-│                      │ (80+ rules)  │                           │
-│                      └──────────────┘                           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🛠️ Tech Stack
-
-<p align="center">
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS" />
-  <img src="https://img.shields.io/badge/Zustand-443E38?style=for-the-badge&logo=react&logoColor=white" alt="Zustand" />
-</p>
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Frontend** | React 18 + Vite | Modern, fast UI development |
-| **Styling** | TailwindCSS 4.0 + Glassmorphism | Premium dark-mode UI |
-| **State** | Zustand + Persist | LocalStorage-backed state management |
-| **Backend** | Node.js + Express | RESTful API server |
-| **Security** | Helmet + express-rate-limit | OWASP-compliant middleware |
-| **LLM Integration** | Groq SDK, OpenAI SDK | Multi-provider model access |
-| **Icons** | Lucide React | Consistent icon system |
-
----
-
-## 📂 Project Structure
-
-```
-bhisma/
-├── 📁 frontend/               # React frontend application
-│   ├── src/
-│   │   ├── components/        # UI components
-│   │   │   ├── Dashboard.jsx      # Onboarding + stats
-│   │   │   ├── ModelsPage.jsx     # LLM configuration
-│   │   │   ├── AttacksPage.jsx    # Attack selection
-│   │   │   ├── DefensesPage.jsx   # Defense sandbox
-│   │   │   ├── TestPage.jsx       # Test execution
-│   │   │   ├── ResultsPage.jsx    # Results + export
-│   │   │   └── ComparePage.jsx    # Model comparison
-│   │   ├── services/
-│   │   │   ├── api.js             # Axios client
-│   │   │   └── reportService.js   # Export utilities
-│   │   ├── store/
-│   │   │   └── useStore.js        # Zustand + persist
-│   │   └── index.css              # Glassmorphism styles
-│   └── index.html             # SEO + accessibility
-│
-├── 📁 backend/                # Express backend API
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── attacks.js     # Attack library (52+ vectors)
-│   │   │   ├── defences.js    # Defense mechanisms
-│   │   │   ├── tests.js       # Test execution engine
-│   │   │   └── models.js      # LLM model management
-│   │   └── index.js           # Server + security middleware
-│   └── .env.example           # Environment template
-│
-├── 📄 instructions.md         # Project requirements
-└── 📄 README.md               # This file
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-- API Key from [Groq](https://console.groq.com/) (free tier available)
-
-### Installation
+### 1) Backend
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/bhisma.git
-cd bhisma
-
-# Install backend dependencies
 cd backend
 npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
-
-### Configuration
-
-```bash
-# In backend folder, create .env file from template
-cd backend
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
 ```
 
-### Running the Application
+Update `backend/.env` values as needed (see Environment Variables below), then run:
 
 ```bash
-# Terminal 1: Start backend
-cd backend
-npm run dev
-
-# Terminal 2: Start frontend
-cd frontend
 npm run dev
 ```
 
-Open your browser at `http://localhost:5173`
+Backend runs on `http://localhost:3001` by default.
 
----
+### 2) Frontend
 
-## 🔮 Roadmap
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
 
-### Phase 1: Core Platform ✅
-- [x] Attack library with OWASP-aligned taxonomy (52+ attacks)
-- [x] Multi-provider LLM integration
-- [x] Real-time test execution
-- [x] Risk scoring system (80+ detection rules)
+Frontend runs on `http://localhost:5173` by default.
 
-### Phase 2: Advanced Features ✅
-- [x] Defense sandbox with re-testing
-- [x] Model comparison dashboard
-- [x] Export reports (PDF/JSON)
-- [x] LocalStorage persistence
-- [x] OWASP security middleware
-- [x] WCAG accessibility compliance
+## Environment variables
 
-### Phase 3: Research Extensions 📋
-- [ ] Benchmark dataset generation
-- [ ] Statistical analysis tools
-- [ ] API for CI/CD integration
-- [ ] Community attack sharing
+### Backend (`backend/.env`)
 
----
+- `PORT` (default: `3001`)
+- `CORS_ORIGIN` (recommended single origin, e.g. `http://localhost:5173`)
+- `GROQ_API_KEY` (optional, required only if using Groq provider)
+- `OPENAI_API_KEY` (optional, required only if using OpenAI provider)
+- Optional local settings are documented in `backend/.env.example`.
 
-## 🤝 Contributing
+### Frontend (`frontend/.env`)
 
-We welcome contributions from security researchers, ML engineers, and developers. Whether it's:
-- 🐛 Bug reports and fixes
-- 🆕 New attack vectors or defense mechanisms
-- 📝 Documentation improvements
-- 🧪 Test coverage
+- `VITE_API_URL` (default local value: `http://localhost:3001`)
 
-Please read our contributing guidelines before submitting a pull request.
+## API summary
 
----
+Base URL: `http://localhost:3001`
 
-## 📚 Further Reading
+- Health
+  - `GET /health`
+- Models
+  - `GET /models`
+  - `POST /models`
+  - `POST /models/:id/test`
+  - `DELETE /models/:id`
+- Attacks
+  - `GET /attacks`
+  - `GET /attacks/categories`
+  - `GET /attacks/:id`
+  - `POST /attacks` (custom attack)
+  - `DELETE /attacks/:id` (custom attacks only)
+- Tests
+  - `POST /tests/run`
+  - `POST /tests/auto-scan`
+  - `GET /tests`
+  - `GET /tests/:id`
+- Defenses
+  - `GET /defenses`
+  - `GET /defenses/:id`
+  - `POST /defenses/apply`
+  - `POST /defenses/scan-output`
+- Compare
+  - `POST /compare`
+  - `GET /compare`
+  - `POST /compare/analyze`
 
-### Recommended Resources
+## Run instructions
 
-- [OWASP GenAI Security Project](https://genai.owasp.org/) — Comprehensive LLM security guidance
-- [LLM Security 101](https://llmsecurity.net/) — Curated learning resources
-- [Prompt Injection Primer](https://www.lakera.ai/blog/guide-to-prompt-injection) — Lakera's comprehensive guide
-- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) — Government standards
+From each package directory:
 
-### Related Tools
+- Backend: `npm run dev` (or `npm start`)
+- Frontend: `npm run dev`
 
-| Tool | Focus | Link |
-|------|-------|------|
-| Garak | LLM vulnerability scanner | [github.com/leondz/garak](https://github.com/leondz/garak) |
-| PyRIT | Microsoft's red-teaming toolkit | [github.com/Azure/PyRIT](https://github.com/Azure/PyRIT) |
-| Promptfoo | LLM evaluation & testing | [github.com/promptfoo/promptfoo](https://github.com/promptfoo/promptfoo) |
+Optional checks:
 
----
+- Backend tests: `cd backend && npm test`
+- Frontend tests: `cd frontend && npm test`
+- Frontend lint: `cd frontend && npm run lint`
 
-## ⚖️ License
+## Classroom demo evidence (confirmed)
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+- Backend startup confirmed: `npm run dev` starts API on `http://localhost:3001`.
+- Frontend startup confirmed: `npm run dev` starts Vite dev server and UI is reachable locally.
+- Backend tests confirmed: `Test Files 5 passed (5)`, `Tests 36 passed (36)`, `Duration 9.89s`.
+- Frontend tests confirmed: `Test Files 5 passed (5)`, `Tests 32 passed (32)`, `Duration 70.94s`.
 
----
+## Local model connection guide (for teacher demo)
 
-## 🙏 Acknowledgments
+Use the Models page and click `Test Connection` after adding each model.
 
-- **OWASP Foundation** for the LLM Top 10 framework
-- **Security Research Community** for continuous vulnerability discovery
-- Open-source projects that inspired this work
+- Groq (cloud)
+  - Provider: `groq`
+  - Required: API key
+  - Model ID example: `llama-3.3-70b-versatile`
 
----
+- OpenAI (cloud)
+  - Provider: `openai`
+  - Required: API key
+  - Model ID example: `gpt-4o-mini`
 
-<p align="center">
-  <strong>Built with ❤️ for the AI Security Community</strong>
-</p>
+- Ollama (local)
+  - Start Ollama and ensure the model exists locally.
+  - Recommended endpoint: `http://localhost:11434/v1`
+  - Model ID example: `llama3`
+  - Note: the app normalizes Ollama endpoints to use `/v1` for OpenAI-compatible routing.
 
-<p align="center">
-  <em>"Security is not a product, but a process." — Bruce Schneier</em>
-</p>
+- Custom local server (OpenAI-compatible)
+  - Provider: `custom`
+  - Endpoint should expose `POST /v1/chat/completions`
+  - Endpoint example: `http://localhost:5000/v1`
+  - Model ID: use the exact model name expected by your local server
+  - API key is optional for many local servers
+
+### Quick setup matrix (beginner-friendly)
+
+| Provider | Required fields | Optional fields | Endpoint example | Model ID example |
+|---|---|---|---|---|
+| Groq | Model Name, Provider, API Key | Model ID | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| OpenAI | Model Name, Provider, API Key | Model ID | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| Ollama (local) | Model Name, Provider, Endpoint URL | API Key, Model ID | `http://localhost:11434/v1` | `llama3` |
+| Custom OpenAI-compatible local server | Model Name, Provider, Endpoint URL, Model ID | API Key | `http://localhost:5000/v1` | `my-local-model` |
+
+### Connection troubleshooting checklist
+
+1. Confirm your local server is running (for Ollama: `ollama serve`).
+2. Confirm endpoint includes `/v1` when using OpenAI-compatible routes.
+3. Confirm model ID is valid on that provider/server.
+4. Confirm API key is present and valid for cloud providers.
+5. Confirm backend is reachable at `http://localhost:3001`.
+
+This project is intentionally classroom-demo focused. It does not claim production-scale reliability, throughput, or multi-tenant isolation.
+
+## 5-10 minute classroom demo checklist
+
+1. Start backend (`cd backend && npm run dev`) and frontend (`cd frontend && npm run dev`).
+2. Add a model in Models page and run `Test Connection`.
+3. Select attacks in Attacks page.
+4. Run a manual test from Test page.
+5. Open Results page and inspect one result.
+6. Run a second test and compare in Compare page.
+7. Apply a defense and run output scan in Defenses page.
+
+## Known limitations
+
+- No authentication/authorization layer yet.
+- Test execution is request/response based (no streaming progress from backend).
+- Auto-scan progress in UI is coarse-grained because backend returns aggregate output at completion.
+- Compare endpoint may fail with HTTP 413 if test result arrays are very large; frontend gracefully falls back to client-side analysis.
+
+## Additional docs
+
+- Backend details: `backend/README.md`
+- Frontend details: `frontend/README.md`
