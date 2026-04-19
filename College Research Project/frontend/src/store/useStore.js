@@ -21,7 +21,13 @@ const useStore = create(
             models: [],
             setModels: (models) => set({ models }),
             addModel: (model) => set((state) => ({
-                models: [...state.models, { ...model, id: Date.now().toString() }]
+                models: [
+                    ...state.models,
+                    {
+                        ...model,
+                        id: model?.id || Date.now().toString()
+                    }
+                ]
             })),
             removeModel: (id) => set((state) => ({
                 models: state.models.filter((m) => m.id !== id)
@@ -46,7 +52,9 @@ const useStore = create(
                 };
             }),
             selectAllAttacks: () => set((state) => ({
-                selectedAttacks: state.attacks.map((a) => a.id)
+                selectedAttacks: state.attacks.length > 0
+                    ? state.attacks.map((a) => a.id)
+                    : state.selectedAttacks
             })),
             clearSelectedAttacks: () => set({ selectedAttacks: [] }),
 
@@ -58,8 +66,8 @@ const useStore = create(
                 testResults: [
                     {
                         ...result,
-                        id: Date.now().toString(),
-                        createdAt: new Date().toISOString()
+                        id: result?.id || Date.now().toString(),
+                        createdAt: result?.createdAt || new Date().toISOString()
                     },
                     ...state.testResults
                 ].slice(0, 50) // Keep only last 50 results

@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Primary Palette - Cybersecurity Neon */
-  --color-primary: #6366f1;
+  /* Primary Palette - Classroom Demo, High Contrast */
+  --color-primary: #0ea5e9;
   --color-cyan: #22d3ee;
-  --color-purple: #a855f7;
-  --color-rose: #fb7185;
+  --color-purple: #3b82f6;
+  --color-rose: #f97316;
   
   /* Status Colors */
   --color-danger: #ef4444;
@@ -21,6 +22,9 @@
   --color-text: #f1f5f9;
   --color-text-muted: #94a3b8;
   --color-text-dim: #64748b;
+
+  --font-display: 'Manrope', 'Segoe UI', Tahoma, sans-serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', Tahoma, sans-serif;
 }
 
 /* ============================================
@@ -35,8 +39,15 @@ body {
   background-color: var(--color-bg-dark);
   background-attachment: fixed;
   color: var(--color-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   min-height: 100vh;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 /* ============================================
@@ -207,6 +218,7 @@ body {
   color: white;
   padding: 0.75rem 1rem;
   transition: all 0.2s ease;
+  min-height: 44px;
 }
 
 .glass-input:focus {
@@ -227,7 +239,7 @@ body {
 .glass-button {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-purple) 100%);
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   color: white;
   font-weight: 600;
   padding: 0.75rem 1.5rem;

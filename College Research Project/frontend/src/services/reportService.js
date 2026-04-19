@@ -3,50 +3,94 @@
  * Provides JSON export and PDF generation via browser print
  */
 
+function toSafeString(value, fallback = '') {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function toSafeNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toSafeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function slugify(value, fallback = 'report') {
+  const text = toSafeString(value, fallback).toLowerCase();
+  return text.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || fallback;
+}
+
+function isBrowserEnvironment() {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function triggerJsonDownload(data, filename) {
+  if (!isBrowserEnvironment() || typeof Blob === 'undefined' || !URL?.createObjectURL) {
+    throw new Error('File export is not supported in this environment');
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
  * Export test result as JSON file
  * @param {Object} result - Test result object
  * @param {string} filename - Optional custom filename
  */
 export const exportAsJSON = (result, filename) => {
+  if (!result || typeof result !== 'object') {
+    throw new Error('A valid test result object is required');
+  }
+
+  const safeResults = toSafeArray(result.results);
+  const modelName = toSafeString(result.modelName, 'Unknown Model');
+
   const exportData = {
     exportedAt: new Date().toISOString(),
     version: '1.0.0',
     platform: 'Bhisma',
     testResult: {
-      id: result.id,
-      modelName: result.modelName,
-      provider: result.provider,
-      timestamp: result.createdAt,
+      id: toSafeString(result.id, ''),
+      modelName,
+      provider: toSafeString(result.provider, ''),
+      timestamp: toSafeString(result.createdAt, new Date().toISOString()),
       summary: {
-        totalAttacks: result.totalAttacks,
-        passed: result.passed,
-        failed: result.failed,
-        riskScore: result.riskScore,
-        riskLevel: result.riskLevel
+        totalAttacks: toSafeNumber(result.totalAttacks, safeResults.length),
+        passed: toSafeNumber(result.passed, 0),
+        failed: toSafeNumber(result.failed, 0),
+        riskScore: toSafeNumber(result.riskScore, 0),
+        riskLevel: toSafeString(result.riskLevel, 'MINIMAL')
       },
-      results: result.results?.map(r => ({
-        attackName: r.attackName,
-        category: r.category,
-        severity: r.severity,
-        vulnerable: r.vulnerable,
-        confidence: r.confidence,
-        reason: r.reason,
-        prompt: r.prompt,
-        response: r.response
+      results: safeResults.map((item) => ({
+        attackName: toSafeString(item?.attackName, ''),
+        category: toSafeString(item?.category, ''),
+        severity: toSafeString(item?.severity, ''),
+        vulnerable: item?.vulnerable === true,
+        confidence: toSafeNumber(item?.confidence, 0),
+        reason: toSafeString(item?.reason, ''),
+        prompt: toSafeString(item?.prompt, ''),
+        response: toSafeString(item?.response, ''),
+        error: toSafeString(item?.error, '')
       }))
     }
   };
 
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename || `bhisma-report-${result.modelName}-${Date.now()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const computedFilename = toSafeString(filename, `bhisma-report-${slugify(modelName)}-${Date.now()}.json`);
+  triggerJsonDownload(exportData, computedFilename);
+  return computedFilename;
 };
 
 /**
@@ -54,32 +98,28 @@ export const exportAsJSON = (result, filename) => {
  * @param {Array} results - Array of test results
  */
 export const exportAllAsJSON = (results) => {
+  const safeResults = toSafeArray(results);
+
   const exportData = {
     exportedAt: new Date().toISOString(),
     version: '1.0.0',
     platform: 'Bhisma',
-    totalTests: results.length,
-    testResults: results.map(r => ({
-      id: r.id,
-      modelName: r.modelName,
-      riskScore: r.riskScore,
-      riskLevel: r.riskLevel,
-      totalAttacks: r.totalAttacks,
-      passed: r.passed,
-      failed: r.failed,
-      timestamp: r.createdAt
+    totalTests: safeResults.length,
+    testResults: safeResults.map((item) => ({
+      id: toSafeString(item?.id, ''),
+      modelName: toSafeString(item?.modelName, 'Unknown Model'),
+      riskScore: toSafeNumber(item?.riskScore, 0),
+      riskLevel: toSafeString(item?.riskLevel, 'MINIMAL'),
+      totalAttacks: toSafeNumber(item?.totalAttacks, 0),
+      passed: toSafeNumber(item?.passed, 0),
+      failed: toSafeNumber(item?.failed, 0),
+      timestamp: toSafeString(item?.createdAt, new Date().toISOString())
     }))
   };
 
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bhisma-all-results-${Date.now()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const filename = `bhisma-all-results-${Date.now()}.json`;
+  triggerJsonDownload(exportData, filename);
+  return filename;
 };
 
 /**
@@ -87,16 +127,35 @@ export const exportAllAsJSON = (results) => {
  * @param {Object} result - Test result object
  */
 export const exportAsPDF = (result) => {
-  const printWindow = window.open('', '_blank');
+  if (!result || typeof result !== 'object') {
+    throw new Error('A valid test result object is required');
+  }
 
-  const vulnerableResults = result.results?.filter(r => r.vulnerable) || [];
-  const safeResults = result.results?.filter(r => !r.vulnerable) || [];
+  if (!isBrowserEnvironment() || typeof window.open !== 'function') {
+    throw new Error('PDF export is not supported in this environment');
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow || !printWindow.document) {
+    throw new Error('Unable to open print window. Please allow pop-ups and try again.');
+  }
+
+  const safeResults = toSafeArray(result.results);
+  const vulnerableResults = safeResults.filter((item) => item?.vulnerable === true);
+  const modelName = toSafeString(result.modelName, 'Unknown Model');
+  const riskLevel = toSafeString(result.riskLevel, 'MINIMAL').toUpperCase();
+  const riskScore = Math.max(0, Math.min(100, toSafeNumber(result.riskScore, 0)));
+  const totalAttacks = toSafeNumber(result.totalAttacks, safeResults.length);
+  const passed = toSafeNumber(result.passed, safeResults.filter((item) => item?.vulnerable !== true).length);
+  const failed = toSafeNumber(result.failed, vulnerableResults.length);
+  const reportId = toSafeString(result.id, 'N/A');
+  const riskClass = `risk-${riskLevel.toLowerCase()}`;
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Bhisma Security Report - ${result.modelName}</title>
+      <title>Bhisma Security Report - ${escapeHtml(modelName)}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -200,24 +259,24 @@ export const exportAsPDF = (result) => {
     <body>
       <div class="header">
         <h1>🛡️ Bhisma Security Report</h1>
-        <p class="subtitle">Model: ${result.modelName} | Generated: ${new Date().toLocaleString()}</p>
+        <p class="subtitle">Model: ${escapeHtml(modelName)} | Generated: ${new Date().toLocaleString()}</p>
       </div>
 
       <div class="summary">
         <div class="stat">
-          <div class="stat-value risk-${result.riskLevel.toLowerCase()}">${result.riskScore}%</div>
+          <div class="stat-value ${riskClass}">${riskScore}%</div>
           <div class="stat-label">Risk Score</div>
         </div>
         <div class="stat">
-          <div class="stat-value">${result.totalAttacks}</div>
+          <div class="stat-value">${totalAttacks}</div>
           <div class="stat-label">Total Attacks</div>
         </div>
         <div class="stat">
-          <div class="stat-value" style="color: #16a34a;">${result.passed}</div>
+          <div class="stat-value" style="color: #16a34a;">${passed}</div>
           <div class="stat-label">Passed</div>
         </div>
         <div class="stat">
-          <div class="stat-value" style="color: #dc2626;">${result.failed}</div>
+          <div class="stat-value" style="color: #dc2626;">${failed}</div>
           <div class="stat-label">Vulnerable</div>
         </div>
       </div>
@@ -238,11 +297,11 @@ export const exportAsPDF = (result) => {
             <tbody>
               ${vulnerableResults.map(r => `
                 <tr>
-                  <td><strong>${r.attackName}</strong></td>
-                  <td>${r.category}</td>
-                  <td>${r.severity}</td>
-                  <td>${r.confidence}%</td>
-                  <td>${r.reason || '-'}</td>
+                  <td><strong>${escapeHtml(toSafeString(r.attackName, '-'))}</strong></td>
+                  <td>${escapeHtml(toSafeString(r.category, '-'))}</td>
+                  <td>${escapeHtml(toSafeString(r.severity, '-'))}</td>
+                  <td>${toSafeNumber(r.confidence, 0)}%</td>
+                  <td>${escapeHtml(toSafeString(r.reason, '-'))}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -263,13 +322,13 @@ export const exportAsPDF = (result) => {
             </tr>
           </thead>
           <tbody>
-            ${result.results?.map(r => `
+            ${safeResults.map(r => `
               <tr>
-                <td>${r.attackName}</td>
-                <td>${r.category}</td>
-                <td>${r.severity}</td>
+                <td>${escapeHtml(toSafeString(r.attackName, '-'))}</td>
+                <td>${escapeHtml(toSafeString(r.category, '-'))}</td>
+                <td>${escapeHtml(toSafeString(r.severity, '-'))}</td>
                 <td><span class="${r.vulnerable ? 'status-vulnerable' : 'status-safe'}">${r.vulnerable ? 'VULNERABLE' : 'SAFE'}</span></td>
-                <td>${r.confidence}%</td>
+                <td>${toSafeNumber(r.confidence, 0)}%</td>
               </tr>
             `).join('')}
           </tbody>
@@ -278,7 +337,7 @@ export const exportAsPDF = (result) => {
 
       <div class="footer">
         <p>Generated by Bhisma - LLM Security Testing Platform</p>
-        <p>Report ID: ${result.id}</p>
+        <p>Report ID: ${escapeHtml(reportId)}</p>
       </div>
 
       <script>
@@ -290,6 +349,7 @@ export const exportAsPDF = (result) => {
 
   printWindow.document.write(html);
   printWindow.document.close();
+  return true;
 };
 
 /**
@@ -297,21 +357,69 @@ export const exportAsPDF = (result) => {
  * @param {Object} result - Test result object
  */
 export const copyToClipboard = async (result) => {
+  if (!result || typeof result !== 'object') {
+    throw new Error('A valid test result object is required');
+  }
+
+  const safeResults = toSafeArray(result.results);
+  const vulnerableRows = safeResults.filter((item) => item?.vulnerable === true);
+  const modelName = toSafeString(result.modelName, 'Unknown Model');
+  const riskScore = toSafeNumber(result.riskScore, 0);
+  const riskLevel = toSafeString(result.riskLevel, 'MINIMAL');
+  const passed = toSafeNumber(result.passed, 0);
+  const failed = toSafeNumber(result.failed, 0);
+  const totalAttacks = toSafeNumber(result.totalAttacks, safeResults.length);
+
   const summary = `
 Bhisma Security Report
 ============================
-Model: ${result.modelName}
-Risk Score: ${result.riskScore}% (${result.riskLevel})
-Total Attacks: ${result.totalAttacks}
-Passed: ${result.passed}
-Vulnerable: ${result.failed}
+Model: ${modelName}
+Risk Score: ${riskScore}% (${riskLevel})
+Total Attacks: ${totalAttacks}
+Passed: ${passed}
+Vulnerable: ${failed}
 
 Vulnerabilities:
-${result.results?.filter(r => r.vulnerable).map(r => `• ${r.attackName} (${r.category}) - ${r.confidence}% confidence`).join('\n') || 'None found'}
+${vulnerableRows.map((item) => `• ${toSafeString(item.attackName, 'Unknown Attack')} (${toSafeString(item.category, 'uncategorized')}) - ${toSafeNumber(item.confidence, 0)}% confidence`).join('\n') || 'None found'}
 
 Generated: ${new Date().toLocaleString()}
   `.trim();
 
-  await navigator.clipboard.writeText(summary);
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(summary);
+    return true;
+  }
+
+  if (!isBrowserEnvironment()) {
+    throw new Error('Clipboard is not supported in this environment');
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = summary;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'absolute';
+  textArea.style.left = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    const copied = document.execCommand('copy');
+    if (!copied) {
+      throw new Error('Failed to copy report to clipboard');
+    }
+  } finally {
+    document.body.removeChild(textArea);
+  }
+
   return true;
 };
+
+function escapeHtml(value) {
+  const text = String(value ?? '');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

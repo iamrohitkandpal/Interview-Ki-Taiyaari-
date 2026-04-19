@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3, Lock, Menu, Settings, Shield, Target, X, Zap, GitCompare, ChevronLeft, ChevronRight } from "lucide-react";
 import useStore from "./store/useStore";
 import Dashboard from "./components/Dashboard";
@@ -24,6 +24,13 @@ const tabs = [
 function App() {
   const { activeTab, setActiveTab } = useStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const tabExists = tabs.some((tab) => tab.id === activeTab);
+    if (!tabExists) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, setActiveTab]);
 
   const renderPage = () => {
     switch (activeTab) {
@@ -55,7 +62,7 @@ function App() {
       >
         {/* Logo */}
         <div className="p-5 border-b border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20" aria-hidden="true">
+          <div className="w-10 h-10 rounded-xl bg-linear-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20" aria-hidden="true">
             <Shield className="w-5 h-5 text-white" />
           </div>
           {sidebarOpen && (
@@ -87,7 +94,7 @@ function App() {
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={sidebarOpen ? undefined : tab.label}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                      ? `bg-gradient-to-r ${colorStyles[tab.color]} border`
+                      ? `bg-linear-to-r ${colorStyles[tab.color]} border`
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                   >
