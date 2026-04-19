@@ -1,27 +1,66 @@
 
-import { useState, useMemo } from 'react';
-import { GitCompare, ArrowRight, Shield, AlertTriangle, TrendingUp, TrendingDown, Minus, BarChart3, FileText, Info, AlertCircle, Copy, Check } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { GitCompare, ArrowRight, BarChart3, Info, AlertCircle, Copy, Check, Lightbulb, Loader2 } from 'lucide-react';
 import useStore from '../store/useStore';
+import { compareAPI } from '../services/api';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
-import { getRiskColor, getRiskBadgeVariant } from '../utils/styles';
+import { getRiskBadgeVariant } from '../utils/styles';
 
 function ComparePage() {
-    const { testResults } = useStore();
+    const { testResults, addToast, setActiveTab } = useStore();
     const [selectedResults, setSelectedResults] = useState([null, null]);
     const [copied, setCopied] = useState(false);
+    const [backendAnalysis, setBackendAnalysis] = useState(null);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
+    const [analysisError, setAnalysisError] = useState('');
+
+    const normalizeNumber = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const safeText = (value, fallback = '') => {
+        return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+    };
+
+    // Call backend analyze endpoint when both results are selected
+    useEffect(() => {
+        if (!selectedResults[0] || !selectedResults[1]) {
+            setBackendAnalysis(null);
+            setAnalysisError('');
+            return;
+        }
+
+        const fetchAnalysis = async () => {
+            setAnalysisLoading(true);
+            setAnalysisError('');
+            try {
+                const res = await compareAPI.analyze({ testResults: selectedResults });
+                setBackendAnalysis(res.data);
+            } catch (error) {
+                // Fallback: continue with client-side comparison only
+                setBackendAnalysis(null);
+                setAnalysisError(error?.message || 'Failed to generate backend analysis');
+            } finally {
+                setAnalysisLoading(false);
+            }
+        };
+
+        fetchAnalysis();
+    }, [selectedResults]);
 
     // Get unique test results for selection
     const availableResults = useMemo(() => {
-        return testResults.map(r => ({
-            id: r.id,
-            label: `${r.modelName} ${r.riskLevel ? `- ${r.riskLevel}` : ''} (${r.riskScore}%)`,
-            ...r
+        return testResults.map((result) => ({
+            id: result.id,
+            label: `${safeText(result.modelName, 'Unknown Model')} ${result.riskLevel ? `- ${result.riskLevel}` : ''} (${normalizeNumber(result.riskScore)}%)`,
+            ...result
         }));
     }, [testResults]);
 
     const handleSelect = (index, resultId) => {
-        const result = testResults.find(r => r.id === resultId) || null;
+        const result = testResults.find((item) => item.id === resultId) || null;
         const newSelection = [...selectedResults];
         newSelection[index] = result;
         setSelectedResults(newSelection);
@@ -35,12 +74,14 @@ function ComparePage() {
         // Calculate category breakdown for each
         const getCategoryStats = (results) => {
             const stats = {};
-            results?.results?.forEach(r => {
-                if (!stats[r.category]) {
-                    stats[r.category] = { total: 0, vulnerable: 0 };
+            const rows = Array.isArray(results?.results) ? results.results : [];
+            rows.forEach((row) => {
+                const category = safeText(row?.category, 'uncategorized');
+                if (!stats[category]) {
+                    stats[category] = { total: 0, vulnerable: 0 };
                 }
-                stats[r.category].total++;
-                if (r.vulnerable) stats[r.category].vulnerable++;
+                stats[category].total += 1;
+                if (row?.vulnerable === true) stats[category].vulnerable += 1;
             });
             return stats;
         };
@@ -52,16 +93,16 @@ function ComparePage() {
         const allCategories = [...new Set([...Object.keys(aStats), ...Object.keys(bStats)])];
 
         // Reliability Metric (Research Standard)
-        const totalAttacksA = a.totalAttacks || 0;
-        const totalAttacksB = b.totalAttacks || 0;
+        const totalAttacksA = normalizeNumber(a?.totalAttacks, 0);
+        const totalAttacksB = normalizeNumber(b?.totalAttacks, 0);
         const reliability = Math.min(totalAttacksA, totalAttacksB) > 20 ? 'High' : Math.min(totalAttacksA, totalAttacksB) > 5 ? 'Medium' : 'Low';
         const isSkewed = Math.abs(totalAttacksA - totalAttacksB) > 5;
 
         return {
             models: [a, b],
-            riskDiff: a.riskScore - b.riskScore,
-            passedDiff: a.passed - b.passed,
-            failedDiff: a.failed - b.failed,
+            riskDiff: normalizeNumber(a?.riskScore) - normalizeNumber(b?.riskScore),
+            passedDiff: normalizeNumber(a?.passed) - normalizeNumber(b?.passed),
+            failedDiff: normalizeNumber(a?.failed) - normalizeNumber(b?.failed),
             reliability,
             isSkewed,
             categories: allCategories.map(cat => ({
@@ -83,10 +124,39 @@ function ComparePage() {
     };
 
     const copyCitation = () => {
+        if (!comparison) {
+            addToast('Select two test runs to copy citation', 'warning');
+            return;
+        }
+
         const text = `Bhisma Comparative Analysis: ${comparison.models[0].modelName} vs ${comparison.models[1].modelName}. Risk Differential: ${Math.abs(comparison.riskDiff)}%. Generated via Bhisma Research Platform.`;
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                })
+                .catch((error) => {
+                    addToast(error?.message || 'Failed to copy citation', 'error');
+                });
+            return;
+        }
+
+        try {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            temp.setAttribute('readonly', '');
+            temp.style.position = 'absolute';
+            temp.style.left = '-9999px';
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (error) {
+            addToast(error?.message || 'Failed to copy citation', 'error');
+        }
     };
 
     return (
@@ -152,6 +222,18 @@ function ComparePage() {
                         </select>
                     </div>
                 </div>
+
+                {testResults.length < 2 && (
+                    <div className="mt-6 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" /> At least two test results are required for comparison. Run another scan from Run Test.
+                    </div>
+                )}
+
+                {analysisError && comparison && (
+                    <div className="mt-6 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm">
+                        Backend analysis unavailable: {analysisError}. Showing client-side comparison only.
+                    </div>
+                )}
             </Card>
 
             {/* Comparison Logic */}
@@ -207,12 +289,12 @@ function ComparePage() {
                             </div>
                             <div className="flex items-end gap-4">
                                 <div>
-                                    <p className="text-2xl font-bold text-white">{comparison.models[0].failed}</p>
+                                    <p className="text-2xl font-bold text-white">{normalizeNumber(comparison.models[0]?.failed)}</p>
                                     <p className="text-xs text-slate-500 uppercase">Model A</p>
                                 </div>
                                 <ArrowRight className="w-5 h-5 text-slate-600 mb-2" />
                                 <div>
-                                    <p className="text-2xl font-bold text-white">{comparison.models[1].failed}</p>
+                                    <p className="text-2xl font-bold text-white">{normalizeNumber(comparison.models[1]?.failed)}</p>
                                     <p className="text-xs text-slate-500 uppercase">Model B</p>
                                 </div>
                             </div>
@@ -292,6 +374,39 @@ function ComparePage() {
                         </div>
                     </Card>
 
+                    {/* Backend Recommendations */}
+                    {analysisLoading && (
+                        <Card variant="glass" className="p-6 flex items-center gap-3">
+                            <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                            <span className="text-slate-400 text-sm">Generating analysis recommendations...</span>
+                        </Card>
+                    )}
+                    {backendAnalysis?.recommendations?.length > 0 && !analysisLoading && (
+                        <Card variant="neon" className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 rounded-lg bg-amber-500/10">
+                                    <Lightbulb className="w-5 h-5 text-amber-400" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-white">Recommendations</h3>
+                            </div>
+                            <ul className="space-y-2">
+                                {backendAnalysis.recommendations.map((rec, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                                        <ArrowRight className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                                        <span>{rec}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            {backendAnalysis.summary && (
+                                <p className="text-xs text-slate-500 mt-4">
+                                    Avg. Risk Score: {backendAnalysis.summary.averageRiskScore}% •
+                                    Most Secure: {safeText(backendAnalysis.summary.mostSecure?.name, 'N/A')} •
+                                    Least Secure: {safeText(backendAnalysis.summary.leastSecure?.name, 'N/A')}
+                                </p>
+                            )}
+                        </Card>
+                    )}
+
                     {/* Methodology Footer */}
                     <Card variant="solid" className="p-6 opacity-75">
                         <div className="flex gap-4">
@@ -313,6 +428,12 @@ function ComparePage() {
                 <div className="flex flex-col items-center justify-center py-20 opacity-50">
                     <BarChart3 className="w-16 h-16 text-slate-600 mb-4" />
                     <p className="text-slate-400 text-lg">Select two test runs to begin comparison</p>
+                    <button
+                        onClick={() => setActiveTab('test')}
+                        className="mt-3 text-sm text-cyan-300 hover:text-cyan-200"
+                    >
+                        Go to Run Test to create comparison data
+                    </button>
                 </div>
             )}
         </div>

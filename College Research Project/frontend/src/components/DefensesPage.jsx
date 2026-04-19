@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Play, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Terminal, RefreshCw, Zap } from 'lucide-react';
 import { defensesAPI } from '../services/api';
+import useStore from '../store/useStore';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
 import { getCategoryColor } from '../utils/styles';
@@ -12,6 +13,8 @@ function DefensesPage() {
   const [testPrompt, setTestPrompt] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingDefenses, setLoadingDefenses] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const { addToast } = useStore();
   const [expandedDefense, setExpandedDefense] = useState(null);
 
@@ -20,11 +23,18 @@ function DefensesPage() {
   }, []);
 
   const loadDefenses = async () => {
+    setLoadingDefenses(true);
+    setLoadError('');
     try {
       const res = await defensesAPI.getAll();
-      setDefenses(res.data || []);
+      setDefenses(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      console.error('Failed to load defenses:', error);
+      const message = error?.message || 'Failed to load defenses';
+      setLoadError(message);
+      setDefenses([]);
+      addToast(message, 'error');
+    } finally {
+      setLoadingDefenses(false);
     }
   };
 
@@ -37,27 +47,47 @@ function DefensesPage() {
   };
 
   const applyDefenses = async () => {
+    if (loading || loadingDefenses) {
+      return;
+    }
+
+    if (selectedDefenses.length === 0) {
+      addToast('Select at least one defense to execute', 'warning');
+      return;
+    }
+
     if (!testPrompt.trim()) {
       addToast('Please enter a test prompt', 'warning');
       return;
     }
 
     setLoading(true);
+    setResult(null);
     try {
       const res = await defensesAPI.apply({
         prompt: testPrompt,
         defenceIds: selectedDefenses
       });
-      setResult(res.data);
+      const responseData = res?.data && typeof res.data === 'object' ? res.data : null;
+
+      if (!responseData) {
+        throw new Error('Defense API returned an invalid response');
+      }
+
+      setResult(responseData);
+      addToast('Defense execution completed', 'success');
     } catch (error) {
       addToast('Failed to apply defenses: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const clearTest = () => {
     setTestPrompt('');
     setResult(null);
+    setSelectedDefenses([]);
+    setExpandedDefense(null);
   };
 
   return (
@@ -82,8 +112,20 @@ function DefensesPage() {
             <Badge variant="info">{selectedDefenses.length} Active</Badge>
           </div>
 
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-            {defenses.map((defense) => {
+          <div className="space-y-3 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
+            {loadingDefenses ? (
+              <div className="p-4 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 text-sm flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading defenses...
+              </div>
+            ) : loadError ? (
+              <div className="p-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm">
+                Failed to load defenses: {loadError}
+              </div>
+            ) : defenses.length === 0 ? (
+              <div className="p-4 rounded-lg border border-slate-700 bg-slate-900/40 text-slate-400 text-sm">
+                No defenses available.
+              </div>
+            ) : defenses.map((defense) => {
               const isSelected = selectedDefenses.includes(defense.id);
               const isExpanded = expandedDefense === defense.id;
 
@@ -138,7 +180,7 @@ function DefensesPage() {
                         {defense.template && (
                           <div className="relative group">
                             <pre className="text-[10px] text-cyan-200/80 bg-slate-900 p-2 rounded border border-slate-700 overflow-x-auto font-mono">
-                              {defense.template.substring(0, 200)}...
+                              {defense.template.length > 200 ? `${defense.template.substring(0, 200)}...` : defense.template}
                             </pre>
                           </div>
                         )}
@@ -186,6 +228,7 @@ function DefensesPage() {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={clearTest}
+                  disabled={loading}
                   className="px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Clear
