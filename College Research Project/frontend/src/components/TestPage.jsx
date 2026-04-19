@@ -1,89 +1,276 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Zap, CheckCircle, XCircle, AlertTriangle, Play, Square, Clock, Scan, Shield } from 'lucide-react';
 import useStore from '../store/useStore';
-import api from '../services/api';
+import api, { defensesAPI } from '../services/api';
 
 function TestPage() {
-    const { models, selectedAttacks, addTestResult, isTestRunning, setTestRunning, testProgress, setTestProgress, resetTestProgress, setActiveTab } = useStore();
+    const {
+        models,
+        attacks,
+        selectedAttacks,
+        addTestResult,
+        isTestRunning,
+        setTestRunning,
+        testProgress,
+        setTestProgress,
+        resetTestProgress,
+        setActiveTab,
+        addToast,
+    } = useStore();
     const [selectedModel, setSelectedModel] = useState('');
     const [error, setError] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('');
     const [isAutoScan, setIsAutoScan] = useState(false);
+    const abortRef = useRef(null);
+    const [availableDefenses, setAvailableDefenses] = useState([]);
+    const [selectedDefenses, setSelectedDefenses] = useState([]);
+
+    // Fetch available defenses
+    useEffect(() => {
+        defensesAPI.getAll().then(res => {
+            setAvailableDefenses(res.data || []);
+        }).catch((err) => {
+            addToast(getErrorMessage(err, 'Failed to load defenses'), 'warning');
+        });
+    }, []);
 
     // Reset when component mounts
     useEffect(() => {
-        return () => resetTestProgress();
+        return () => {
+            resetTestProgress();
+            abortRef.current?.abort();
+        };
     }, []);
 
     const handleRunTest = async () => {
+        if (isTestRunning) {
+            return;
+        }
+
         if (!selectedModel) {
-            setError('Please select a model');
+            const message = 'Please select a model';
+            setError(message);
+            addToast(message, 'warning');
             return;
         }
         if (selectedAttacks.length === 0) {
-            setError('Please select at least one attack');
+            const message = 'Please select at least one attack';
+            setError(message);
+            addToast(message, 'warning');
+            return;
+        }
+
+        // Resolve IDs to full attack objects (backend needs full objects)
+        const attacksToRun = selectedAttacks
+            .map(id => attacks.find(a => a.id === id))
+            .filter(Boolean);
+
+        if (attacksToRun.length === 0) {
+            const message = 'Could not resolve selected attacks. Try refreshing the Attacks page.';
+            setError(message);
+            addToast(message, 'error');
+            return;
+        }
+
+        const model = models.find((item) => item.id === selectedModel);
+        if (!model) {
+            const message = 'Selected model was not found. Refresh models and try again.';
+            setError(message);
+            addToast(message, 'error');
             return;
         }
 
         setError('');
         setTestRunning(true);
-        setTestProgress({ current: 0, total: selectedAttacks.length, currentAttack: 'Starting...' });
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setTestProgress({ current: 0, total: attacksToRun.length, currentAttack: 'Starting...' });
+        let wasCancelled = false;
+        let defenseApplyFailed = false;
+        const promptMetaByAttackId = {};
+        const attacksWithAppliedDefenses = [];
 
         try {
-            const model = models.find(m => m.id === selectedModel);
+            for (let i = 0; i < attacksToRun.length; i++) {
+                if (controller.signal.aborted) {
+                    wasCancelled = true;
+                    break;
+                }
+
+                const attack = attacksToRun[i];
+                setTestProgress({
+                    current: i,
+                    total: attacksToRun.length,
+                    currentAttack: `Preparing: ${attack.name}`
+                });
+
+                try {
+                    let promptToSend = attack.prompt;
+                    let defensesApplied = [];
+                    if (selectedDefenses.length > 0) {
+                        try {
+                            const defRes = await defensesAPI.apply({
+                                prompt: attack.prompt,
+                                defenceIds: selectedDefenses
+                            });
+                            promptToSend = defRes.data?.modified || attack.prompt;
+                            defensesApplied = Array.isArray(defRes.data?.appliedDefences)
+                                ? defRes.data.appliedDefences
+                                : [];
+                        } catch {
+                            defenseApplyFailed = true;
+                        }
+                    }
+                    attacksWithAppliedDefenses.push({ ...attack, prompt: promptToSend });
+                    promptMetaByAttackId[attack.id] = {
+                        originalPrompt: attack.prompt,
+                        hardenedPrompt: selectedDefenses.length > 0 ? promptToSend : undefined,
+                        defensesApplied
+                    };
+                } catch {
+                    attacksWithAppliedDefenses.push({ ...attack });
+                    promptMetaByAttackId[attack.id] = {
+                        originalPrompt: attack.prompt,
+                        hardenedPrompt: undefined,
+                        defensesApplied: []
+                    };
+                }
+
+                setTestProgress({
+                    current: i + 1,
+                    total: attacksToRun.length,
+                    currentAttack: `Prepared: ${attack.name}`
+                });
+            }
+
+            if (wasCancelled) {
+                const message = 'Test cancelled by user';
+                setError(message);
+                addToast(message, 'warning');
+                return;
+            }
+
+            setTestProgress({
+                current: attacksWithAppliedDefenses.length,
+                total: attacksWithAppliedDefenses.length,
+                currentAttack: 'Executing attacks...'
+            });
 
             const response = await api.post('/tests/run', {
+                modelId: model.id,
                 modelConfig: {
+                    name: model.name,
                     provider: model.provider,
                     apiKey: model.apiKey,
                     modelId: model.modelId,
                     endpoint: model.endpoint
                 },
-                attackIds: selectedAttacks,
+                attacks: attacksWithAppliedDefenses,
+                systemPrompt: systemPrompt || undefined
+            }, { signal: controller.signal });
+
+            const serverResults = Array.isArray(response.data?.results) ? response.data.results : [];
+
+            if (!response.data?.id || serverResults.length === 0) {
+                const message = 'Test execution did not return valid results. Please retry.';
+                setError(message);
+                addToast(message, 'error');
+                return;
+            }
+
+            const mergedResults = serverResults.map((result) => {
+                const meta = promptMetaByAttackId[result?.attackId] || {};
+                return {
+                    ...result,
+                    originalPrompt: meta.originalPrompt,
+                    hardenedPrompt: meta.hardenedPrompt,
+                    defensesApplied: Array.isArray(meta.defensesApplied) ? meta.defensesApplied : []
+                };
             });
 
-            // Add result to store (persisted to localStorage)
+            setTestProgress({
+                current: mergedResults.length,
+                total: mergedResults.length,
+                currentAttack: 'Completed'
+            });
+
             addTestResult({
-                modelId: model.id,
-                modelName: model.name,
+                ...response.data,
+                modelId: response.data?.modelId || model.id,
+                modelName: response.data?.modelName || model.name,
                 provider: model.provider,
-                ...response.data
+                results: mergedResults
             });
 
-            // Navigate to results
+            const failed = Number(response.data?.failed) || mergedResults.filter((result) => result?.vulnerable === true).length;
+            const totalAttacks = Number(response.data?.totalAttacks) || mergedResults.length;
+
+            if (defenseApplyFailed) {
+                addToast('Some defense preprocessing failed. Original prompts were used for those attacks.', 'warning');
+            }
+
+            addToast(`Manual test completed: ${failed} vulnerable out of ${totalAttacks}`, failed > 0 ? 'warning' : 'success');
             setActiveTab('results');
         } catch (err) {
-            setError(err.response?.data?.message || 'Test failed. Please try again.');
+            if (err.name === 'CanceledError' || controller.signal.aborted) {
+                const message = 'Test cancelled by user';
+                setError(message);
+                addToast(message, 'warning');
+                return;
+            }
+
+            const message = getErrorMessage(err, 'Manual test failed. Please try again.');
+            setError(message);
+            addToast(message, 'error');
         } finally {
             setTestRunning(false);
             resetTestProgress();
+            abortRef.current = null;
         }
     };
 
     const handleStopTest = () => {
+        abortRef.current?.abort();
         setTestRunning(false);
         resetTestProgress();
         setIsAutoScan(false);
-        setError('Test cancelled by user');
+        const message = 'Test cancelled by user';
+        setError(message);
+        addToast(message, 'warning');
+        abortRef.current = null;
     };
 
     // =============================================
     // AUTO-SCAN: Runs curated attacks automatically
     // =============================================
     const handleAutoScan = async () => {
+        if (isTestRunning) {
+            return;
+        }
+
         if (!selectedModel) {
-            setError('Please select a model');
+            const message = 'Please select a model';
+            setError(message);
+            addToast(message, 'warning');
+            return;
+        }
+
+        const model = models.find((item) => item.id === selectedModel);
+        if (!model) {
+            const message = 'Selected model was not found. Refresh models and try again.';
+            setError(message);
+            addToast(message, 'error');
             return;
         }
 
         setError('');
         setIsAutoScan(true);
         setTestRunning(true);
+        const controller = new AbortController();
+        abortRef.current = controller;
         setTestProgress({ current: 0, total: 15, currentAttack: 'Initializing automated scan...' });
 
         try {
-            const model = models.find(m => m.id === selectedModel);
-
             const response = await api.post('/tests/auto-scan', {
                 modelConfig: {
                     name: model.name,
@@ -93,22 +280,44 @@ function TestPage() {
                     endpoint: model.endpoint
                 },
                 systemPrompt: systemPrompt || undefined
-            });
+            }, { signal: controller.signal });
+
+            const serverResults = Array.isArray(response.data?.results) ? response.data.results : [];
+            if (!response.data?.id || serverResults.length === 0) {
+                const message = 'Auto-scan completed without valid results. Please retry.';
+                setError(message);
+                addToast(message, 'error');
+                return;
+            }
+
+            const totalAttacks = Number(response.data?.totalAttacks) || 15;
+            setTestProgress({ current: totalAttacks, total: totalAttacks, currentAttack: 'Completed' });
 
             addTestResult({
                 modelId: model.id,
                 modelName: model.name,
                 provider: model.provider,
-                ...response.data
+                ...response.data,
+                results: serverResults
             });
 
+            addToast(`Auto-scan completed: ${response.data?.failed || 0} vulnerable out of ${response.data?.totalAttacks || 0}`, (response.data?.failed || 0) > 0 ? 'warning' : 'success');
             setActiveTab('results');
         } catch (err) {
-            setError(err.response?.data?.message || 'Auto-scan failed. Please try again.');
+            if (err.name === 'CanceledError' || controller.signal.aborted) {
+                const message = 'Auto-scan cancelled by user';
+                setError(message);
+                addToast(message, 'warning');
+            } else {
+                const message = getErrorMessage(err, 'Auto-scan failed. Please try again.');
+                setError(message);
+                addToast(message, 'error');
+            }
         } finally {
             setTestRunning(false);
             setIsAutoScan(false);
             resetTestProgress();
+            abortRef.current = null;
         }
     };
 
@@ -121,7 +330,7 @@ function TestPage() {
             {/* Header */}
             <div className="relative">
                 <h1 className="text-3xl font-bold text-white">Run Security Test</h1>
-                <p className="text-slate-400 mt-1">Execute attack vectors against your configured models</p>
+                <p className="text-slate-400 mt-1">Choose a connected model, select attacks, and run manual test or auto-scan.</p>
                 <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl" aria-hidden="true"></div>
             </div>
 
@@ -138,12 +347,13 @@ function TestPage() {
                         </label>
                         {models.length === 0 ? (
                             <div className="p-4 bg-slate-800/50 rounded-lg text-center">
-                                <p className="text-slate-400 text-sm">No models configured</p>
+                                <p className="text-slate-300 text-sm font-medium">No models configured yet</p>
+                                <p className="text-slate-500 text-xs mt-1">Add a model and run Test Connection first.</p>
                                 <button
                                     onClick={() => setActiveTab('models')}
                                     className="mt-2 text-sm text-indigo-400 hover:text-indigo-300"
                                 >
-                                    Add a model →
+                                    Go to Models →
                                 </button>
                             </div>
                         ) : (
@@ -172,12 +382,13 @@ function TestPage() {
                         <div className="p-4 bg-slate-800/50 rounded-lg">
                             {selectedAttacks.length === 0 ? (
                                 <div className="text-center">
-                                    <p className="text-slate-400 text-sm">No attacks selected</p>
+                                    <p className="text-slate-300 text-sm font-medium">No attacks selected</p>
+                                    <p className="text-slate-500 text-xs mt-1">Choose at least one attack to enable test execution.</p>
                                     <button
                                         onClick={() => setActiveTab('attacks')}
                                         className="mt-2 text-sm text-indigo-400 hover:text-indigo-300"
                                     >
-                                        Select attacks →
+                                        Go to Attacks →
                                     </button>
                                 </div>
                             ) : (
@@ -192,6 +403,43 @@ function TestPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Defense Selection (Optional) */}
+                    <div>
+                        <label className="block text-sm text-slate-400 mb-2">
+                            <Shield className="w-4 h-4 inline mr-1" />
+                            Active Defenses <span className="text-slate-600">(optional)</span>
+                        </label>
+                        {availableDefenses.length === 0 ? (
+                            <p className="text-xs text-slate-600">No defenses available</p>
+                        ) : (
+                            <div className="space-y-2 max-h-40 overflow-y-auto p-3 bg-slate-800/50 rounded-lg">
+                                {availableDefenses.map(defense => (
+                                    <label key={defense.id} className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedDefenses.includes(defense.id)}
+                                            onChange={(e) => {
+                                                setSelectedDefenses(prev =>
+                                                    e.target.checked
+                                                        ? [...prev, defense.id]
+                                                        : prev.filter(id => id !== defense.id)
+                                                );
+                                            }}
+                                            className="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500"
+                                            disabled={isTestRunning}
+                                        />
+                                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{defense.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                        {selectedDefenses.length > 0 && (
+                            <p className="text-xs text-emerald-400 mt-1">
+                                {selectedDefenses.length} defense(s) will harden attack prompts before testing
+                            </p>
+                        )}
                     </div>
 
                     {/* Error Display */}
@@ -241,7 +489,7 @@ function TestPage() {
                             disabled={!selectedModel}
                             className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${isTestRunning && isAutoScan
                                 ? 'bg-red-500 hover:bg-red-600 text-white'
-                                : 'bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                                : 'bg-linear-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
                                 }`}
                         >
                             {isTestRunning && isAutoScan ? (
@@ -257,6 +505,11 @@ function TestPage() {
                             )}
                         </button>
                         <p className="text-xs text-slate-500 text-center">Auto-scan runs curated attacks across all categories including context boundary testing</p>
+                    </div>
+
+                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                        <p className="text-sm text-slate-200 font-medium mb-1">Quick run checklist</p>
+                        <p className="text-xs text-slate-400">1) Pick model  2) Confirm attacks  3) Optional defenses  4) Run test  5) Review Results tab.</p>
                     </div>
 
                     {/* System Prompt (for Auto-Scan) */}
@@ -284,7 +537,8 @@ function TestPage() {
                     {!isTestRunning && testProgress.current === 0 ? (
                         <div className="text-center py-12">
                             <Zap className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                            <p className="text-slate-400">Configure and run a test to see progress</p>
+                            <p className="text-slate-300 font-medium">No active test</p>
+                            <p className="text-slate-500 text-sm mt-1">Configure inputs on the left, then run manual test or auto-scan.</p>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -346,6 +600,13 @@ function TestPage() {
             </div>
         </div>
     );
+}
+
+function getErrorMessage(error, fallback = 'Something went wrong') {
+    return error?.response?.data?.message
+        || error?.response?.data?.error
+        || error?.message
+        || fallback;
 }
 
 export default TestPage;

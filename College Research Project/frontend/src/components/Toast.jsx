@@ -31,21 +31,37 @@ const colors = {
     },
 };
 
+const labels = {
+    success: 'Success',
+    error: 'Action needed',
+    warning: 'Check this',
+    info: 'Notice',
+};
+
 function Toast({ toast }) {
     const { removeToast } = useStore();
-    const Icon = icons[toast.type] || icons.info;
-    const color = colors[toast.type] || colors.info;
+    const safeType = typeof toast?.type === 'string' ? toast.type : 'info';
+    const safeMessage = typeof toast?.message === 'string' && toast.message.trim().length > 0
+        ? toast.message
+        : 'Notification';
+
+    const Icon = icons[safeType] || icons.info;
+    const color = colors[safeType] || colors.info;
+    const label = labels[safeType] || labels.info;
 
     return (
         <div
-            className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-2xl shadow-black/30 ${color.bg} animate-toast-in min-w-[300px] max-w-[420px]`}
+            className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-2xl shadow-black/30 ${color.bg} animate-toast-in min-w-75 max-w-105`}
             role="alert"
             aria-live="assertive"
         >
             <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${color.icon}`} aria-hidden="true" />
-            <p className="text-sm text-slate-200 flex-1">{toast.message}</p>
+            <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+                <p className="text-sm text-slate-100 leading-5">{safeMessage}</p>
+            </div>
             <button
-                onClick={() => removeToast(toast.id)}
+                onClick={() => removeToast(toast?.id)}
                 className="text-slate-500 hover:text-slate-300 transition-colors shrink-0"
                 aria-label="Dismiss notification"
             >
@@ -62,11 +78,11 @@ export default function ToastContainer() {
 
     return (
         <div
-            className="fixed top-5 right-5 z-[9999] flex flex-col gap-3"
+            className="fixed top-5 right-5 z-9999 flex flex-col gap-3"
             aria-label="Notifications"
         >
-            {toasts.map((toast) => (
-                <Toast key={toast.id} toast={toast} />
+            {toasts.map((toast, index) => (
+                <Toast key={toast?.id || `${index}-${toast?.message || 'toast'}`} toast={toast} />
             ))}
         </div>
     );

@@ -1,22 +1,40 @@
-import { Shield, AlertTriangle, Clock, Activity, Zap, ArrowRight, Settings, Target, ChevronRight, TrendingUp, Sparkles } from 'lucide-react';
+import { Shield, AlertTriangle, Clock, Activity, Zap, ArrowRight, Settings, Target, ChevronRight, TrendingUp, Sparkles, ListChecks, FlaskConical, GitCompare, ShieldCheck } from 'lucide-react';
 import useStore from '../store/useStore';
 
 function Dashboard() {
     const { models, testResults, selectedAttacks, setActiveTab } = useStore();
 
+    const toSafeNumber = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
     // Calculate stats
     const totalTests = testResults.length;
     const avgRiskScore = totalTests > 0
-        ? Math.round(testResults.reduce((acc, r) => acc + r.riskScore, 0) / totalTests)
+        ? Math.round(testResults.reduce((acc, result) => acc + toSafeNumber(result?.riskScore), 0) / totalTests)
         : null;
-    const totalVulnerabilities = testResults.reduce((acc, r) => acc + (r.failed || 0), 0);
-    const totalPassed = testResults.reduce((acc, r) => acc + (r.passed || 0), 0);
+    const totalVulnerabilities = testResults.reduce((acc, result) => acc + toSafeNumber(result?.failed), 0);
+    const totalPassed = testResults.reduce((acc, result) => acc + toSafeNumber(result?.passed), 0);
 
-    const recentTests = testResults.slice(0, 5);
+    const recentTests = [...testResults]
+        .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())
+        .slice(0, 5);
     const hasModels = models.length > 0;
     const hasAttacks = selectedAttacks.length > 0;
     const hasTests = totalTests > 0;
+    const hasComparison = totalTests > 1;
     const isNewUser = !hasModels && !hasTests;
+
+    const checklist = [
+        { id: 'add-model', label: 'Add model', done: hasModels, tab: 'models', icon: Settings },
+        { id: 'test-connection', label: 'Test connection', done: hasModels, tab: 'models', icon: ShieldCheck },
+        { id: 'select-attacks', label: 'Select attacks', done: hasAttacks, tab: 'attacks', icon: Target },
+        { id: 'run-test', label: 'Run test', done: hasTests, tab: 'test', icon: FlaskConical },
+        { id: 'review-results', label: 'Review results', done: hasTests, tab: 'results', icon: Activity },
+        { id: 'compare-runs', label: 'Compare runs', done: hasComparison, tab: 'compare', icon: GitCompare },
+        { id: 'apply-defense', label: 'Apply defense', done: false, tab: 'defenses', icon: Shield },
+    ];
 
     return (
         <div className="space-y-8">
@@ -26,8 +44,35 @@ function Dashboard() {
                     <span className="gradient-text">Security Dashboard</span>
                 </h1>
                 <p className="text-slate-400 mt-2 text-lg">
-                    {isNewUser ? 'Welcome! Let\'s set up your first security test' : 'Monitor your LLM security posture'}
+                    {isNewUser ? 'Welcome. Follow the guided path to complete your first model security review.' : 'Monitor your LLM security posture and continue your demo workflow.'}
                 </p>
+            </div>
+
+            <div className="glass-panel p-5">
+                <div className="flex items-center gap-2 mb-3">
+                    <ListChecks className="w-5 h-5 text-cyan-300" />
+                    <h2 className="text-white font-semibold">First-time user path</h2>
+                </div>
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-2">
+                    {checklist.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.tab)}
+                                className={`text-left rounded-lg border px-3 py-2 text-sm transition-colors ${item.done
+                                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                    : 'border-slate-700 bg-slate-900/40 text-slate-300 hover:border-slate-500'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Icon className="w-4 h-4" />
+                                    {item.done ? 'Done' : 'Next'}: {item.label}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* NEW USER: Onboarding Flow */}
@@ -107,7 +152,7 @@ function Dashboard() {
                     {/* Main Bento Layout */}
                     <div className="grid lg:grid-cols-5 gap-6">
                         {/* Risk Score - Large Card */}
-                        <div className="lg:col-span-2 neon-card p-6 flex flex-col items-center justify-center min-h-[320px]">
+                        <div className="lg:col-span-2 neon-card p-6 flex flex-col items-center justify-center min-h-80">
                             {avgRiskScore !== null ? (
                                 <>
                                     <p className="text-slate-400 text-sm mb-4 uppercase tracking-wider">Risk Score</p>
@@ -190,11 +235,11 @@ function Dashboard() {
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">
                                                     <p className={`font-bold ${test.riskLevel === 'CRITICAL' || test.riskLevel === 'HIGH' ? 'text-rose-400' : test.riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                                        {test.riskScore}%
+                                                        {toSafeNumber(test?.riskScore)}%
                                                     </p>
                                                 </div>
                                                 <span className={`badge badge-${test.riskLevel === 'CRITICAL' || test.riskLevel === 'HIGH' ? 'danger' : test.riskLevel === 'MEDIUM' ? 'warning' : 'success'} text-xs`}>
-                                                    {test.riskLevel}
+                                                    {test.riskLevel || 'LOW'}
                                                 </span>
                                             </div>
                                         </div>
